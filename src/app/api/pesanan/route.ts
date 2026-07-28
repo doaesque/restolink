@@ -1,4 +1,4 @@
-// api route for managing orders with multi-table support
+// api route for managing orders with multi-table support and status updates
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
@@ -90,6 +90,33 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { sukses: false, pesan: 'Gagal membuat pesanan baru. Pastikan nomor meja valid dan belum terisi.' },
+      { status: 500 }
+    );
+  }
+}
+
+// handle patch request to update order cooking status (used by chefs)
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { noNota, statusPesanan } = body;
+
+    if (!noNota || !statusPesanan) {
+      return NextResponse.json(
+        { sukses: false, pesan: 'ID Nota dan status pesanan wajib diisi.' },
+        { status: 400 }
+      );
+    }
+
+    const updatedPesanan = await prisma.pesanan.update({
+      where: { noNota },
+      data: { statusPesanan },
+    });
+
+    return NextResponse.json({ sukses: true, data: updatedPesanan });
+  } catch (error) {
+    return NextResponse.json(
+      { sukses: false, pesan: 'Gagal memperbarui status pesanan.' },
       { status: 500 }
     );
   }
