@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// enums for status definitions
+enum RolePegawai {
+  KASIR
+  KOKI
+  PELAYAN
+}
+
+enum StatusMeja {
+  TERSEDIA
+  OCCUPIED
+}
+
+enum StatusPesanan {
+  MENUNGGU
+  DIPROSES
+  SELESAI
+}
+
+enum StatusTagihan {
+  UNPAID
+  PAID
+}
+
+// models based on the relational schema
+
+model Pelanggan {
+  id             String    @id @default(uuid())
+  namaPelanggan  String
+  
+  // relations
+  pesanan        Pesanan[]
+
+  @@map("pelanggan")
+}
+
+model Pegawai {
+  id             String      @id @default(uuid())
+  namaPegawai    String
+  jabatan        RolePegawai
+
+  // relations
+  pesanan        Pesanan[]
+  pembayaran     Pembayaran[]
+  laporan        Laporan[]
+  bahanBaku      BahanBaku[]
+
+  @@map("pegawai")
+}
+
+model Pemilik {
+  id             String    @id @default(uuid())
+  namaPemilik    String
+
+  // relations
+  laporan        Laporan[]
+
+  @@map("pemilik")
+}
+
+model Meja {
+  noMeja         Int        @id
+  status         StatusMeja @default(TERSEDIA)
+
+  // relations
+  pesanan        Pesanan[]
+
+  @@map("meja")
+}
+
+model Menu {
+  id             String    @id @default(uuid())
+  namaMenu       String
+  harga          Float
+
+  // relations
+  detailPesanan  DetailPesanan[]
+
+  @@map("menu")
+}
+
+model BahanBaku {
+  id             String    @id @default(uuid())
+  namaBahan      String
+  statusBahan    String    // e.g., "tersedia", "habis"
+  idPegawai      String?   // tracks which employee last updated it
+
+  // relations
+  pegawai        Pegawai?  @relation(fields: [idPegawai], references: [id])
+
+  @@map("bahan_baku")
+}
+
+model Pesanan {
+  noNota           String        @id @default(uuid())
+  tglPesanan       DateTime      @default(now())
+  jumlahOrang      Int
+  metodePembayaran String?
+  statusPesanan    StatusPesanan @default(MENUNGGU)
+  statusTagihan    StatusTagihan @default(UNPAID)
+  
+  // foreign keys
+  idPelanggan      String
+  idPegawai        String?       // optional: which waiter served them
+  noMeja           Int
+
+  // relations
+  pelanggan        Pelanggan     @relation(fields: [idPelanggan], references: [id])
+  pegawai          Pegawai?      @relation(fields: [idPegawai], references: [id])
+  meja             Meja          @relation(fields: [noMeja], references: [noMeja])
+  detailPesanan    DetailPesanan[]
+  pembayaran       Pembayaran?
+
+  @@map("pesanan")
+}
+
+model DetailPesanan {
+  idDetail       String    @id @default(uuid())
+  jumlahPesanan  Int
+  subtotal       Float
+
+  // foreign keys
+  idMenu         String
+  noNota         String
+
+  // relations
+  menu           Menu      @relation(fields: [idMenu], references: [id])
+  pesanan        Pesanan   @relation(fields: [noNota], references: [noNota], onDelete: Cascade)
+
+  @@map("detail_pesanan")
+}
+
+model Pembayaran {
+  noKwitansi     String    @id @default(uuid())
+  totalBayar     Float
+  tglPembayaran  DateTime  @default(now())
+
+  // foreign keys
+  noNota         String    @unique
+  idPegawai      String
+
+  // relations
+  pesanan        Pesanan   @relation(fields: [noNota], references: [noNota])
+  kasir          Pegawai   @relation(fields: [idPegawai], references: [id])
+
+  @@map("pembayaran")
+}
+
+model Laporan {
+  idLaporan        String    @id @default(uuid())
+  periode          String    // e.g., "harian", "mingguan"
+  totalPendapatan  Float
+  tglLaporan       DateTime  @default(now())
+
+  // foreign keys
+  idPemilik        String
+  idPegawai        String
+
+  // relations
+  pemilik          Pemilik   @relation(fields: [idPemilik], references: [id])
+  pegawai          Pegawai   @relation(fields: [idPegawai], references: [id])
+
+  @@map("laporan")
+}
