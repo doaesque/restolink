@@ -11,6 +11,7 @@ enum RolePegawai {
   KASIR
   KOKI
   PELAYAN
+  PEMILIK
 }
 
 enum StatusMeja {
@@ -29,6 +30,17 @@ enum StatusTagihan {
   PAID
 }
 
+enum StatusBahan {
+  TERSEDIA
+  HABIS
+}
+
+enum MetodePembayaran {
+  TUNAI
+  QRIS
+  DEBIT
+}
+
 // models based on the relational schema
 
 model Pelanggan {
@@ -42,7 +54,8 @@ model Pelanggan {
 }
 
 model Pegawai {
-  id             String      @id @default(uuid())
+  id             String      @id
+  pin            String      
   namaPegawai    String
   jabatan        RolePegawai
 
@@ -53,16 +66,6 @@ model Pegawai {
   bahanBaku      BahanBaku[]
 
   @@map("pegawai")
-}
-
-model Pemilik {
-  id             String    @id @default(uuid())
-  namaPemilik    String
-
-  // relations
-  laporan        Laporan[]
-
-  @@map("pemilik")
 }
 
 model Meja {
@@ -87,9 +90,9 @@ model Menu {
 }
 
 model BahanBaku {
-  id             String    @id @default(uuid())
+  id             String      @id @default(uuid())
   namaBahan      String
-  statusBahan    String    // e.g., "tersedia", "habis"
+  statusBahan    StatusBahan @default(TERSEDIA)
   idPegawai      String?   // tracks which employee last updated it
 
   // relations
@@ -99,12 +102,12 @@ model BahanBaku {
 }
 
 model Pesanan {
-  noNota           String        @id @default(uuid())
-  tglPesanan       DateTime      @default(now())
+  noNota           String            @id @default(uuid())
+  tglPesanan       DateTime          @default(now())
   jumlahOrang      Int
-  metodePembayaran String?
-  statusPesanan    StatusPesanan @default(MENUNGGU)
-  statusTagihan    StatusTagihan @default(UNPAID)
+  metodePembayaran MetodePembayaran?
+  statusPesanan    StatusPesanan     @default(MENUNGGU)
+  statusTagihan    StatusTagihan     @default(UNPAID)
   
   // foreign keys
   idPelanggan      String
@@ -112,9 +115,9 @@ model Pesanan {
   noMeja           Int
 
   // relations
-  pelanggan        Pelanggan     @relation(fields: [idPelanggan], references: [id])
-  pegawai          Pegawai?      @relation(fields: [idPegawai], references: [id])
-  meja             Meja          @relation(fields: [noMeja], references: [noMeja])
+  pelanggan        Pelanggan         @relation(fields: [idPelanggan], references: [id])
+  pegawai          Pegawai?          @relation(fields: [idPegawai], references: [id])
+  meja             Meja              @relation(fields: [noMeja], references: [noMeja])
   detailPesanan    DetailPesanan[]
   pembayaran       Pembayaran?
 
@@ -160,11 +163,9 @@ model Laporan {
   tglLaporan       DateTime  @default(now())
 
   // foreign keys
-  idPemilik        String
   idPegawai        String
 
   // relations
-  pemilik          Pemilik   @relation(fields: [idPemilik], references: [id])
   pegawai          Pegawai   @relation(fields: [idPegawai], references: [id])
 
   @@map("laporan")
