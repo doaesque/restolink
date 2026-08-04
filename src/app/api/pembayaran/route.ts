@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
     if (!noNota || totalBayar === undefined) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Nomor nota dan total bayar wajib diisi.' },
+        { sukses: false, pesan: 'Receipt number and total payment are required.' },
         { status: 400 }
       );
     }
@@ -19,20 +19,20 @@ export async function POST(request: Request) {
     const cashierId = idPegawai || 'KASIR-001';
 
     const hasilPembayaran = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // 1. fetch target order
+      // fetch target order
       const pesanan = await tx.pesanan.findUnique({
         where: { noNota },
       });
 
       if (!pesanan) {
-        throw new Error('Pesanan tidak ditemukan.');
+        throw new Error('Order not found.');
       }
 
       if (pesanan.statusTagihan === 'PAID') {
-        throw new Error('Pesanan ini sudah dibayar sebelumnya.');
+        throw new Error('This order has already been paid.');
       }
 
-      // 2. create payment transaction entry
+      // create payment transaction entry
       const pembayaran = await tx.pembayaran.create({
         data: {
           noNota,
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         },
       });
 
-      // 3. update order billing status and payment method
+      // update order billing status and payment method
       await tx.pesanan.update({
         where: { noNota },
         data: {
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         },
       });
 
-      // 4. release associated table back to available status
+      // release associated table back to available status
       await tx.meja.update({
         where: { noMeja: pesanan.noMeja },
         data: { status: 'TERSEDIA' },
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ sukses: true, data: hasilPembayaran }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json(
-      { sukses: false, pesan: error.message || 'Gagal memproses pembayaran.' },
+      { sukses: false, pesan: error.message || 'Failed to process payment.' },
       { status: 500 }
     );
   }

@@ -13,7 +13,7 @@ export async function GET() {
     return NextResponse.json({ sukses: true, data: meja });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Gagal mengambil data meja.' },
+      { sukses: false, pesan: 'Failed to fetch table data.' },
       { status: 500 }
     );
   }
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     // validate input
     if (!noMeja) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Nomor meja wajib diisi.' },
+        { sukses: false, pesan: 'Table number is required.' },
         { status: 400 }
       );
     }
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ sukses: true, data: mejaBaru }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Gagal menambahkan meja baru. Mungkin nomor meja sudah terdaftar.' },
+      { sukses: false, pesan: 'Failed to add new table. The table number might already be registered.' },
       { status: 500 }
     );
   }
