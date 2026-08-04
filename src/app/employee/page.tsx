@@ -57,28 +57,28 @@ export default function EmployeePortalPage() {
     <div className="space-y-8">
       {/* header title section */}
       <div>
-        <h2 className="text-2xl font-bold text-white tracking-tight">Selamat Datang di Portal Operasional</h2>
+        <h2 className="text-2xl font-bold text-white tracking-tight">Welcome to the Operational Portal</h2>
         <p className="text-sm text-slate-400 mt-1">
-          Pilih modul kerja sesuai dengan peran pekerjaan Anda untuk mulai bertugas.
+          Select a work module according to your job role to begin your shift.
         </p>
       </div>
 
       {/* summary stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Meja</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Tables</p>
           <p className="text-3xl font-extrabold text-amber-500 mt-2">{loading ? '...' : totalMeja}</p>
-          <p className="text-xs text-slate-500 mt-1">Kapasitas meja yang terdaftar</p>
+          <p className="text-xs text-slate-500 mt-1">Registered table capacity</p>
         </div>
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Meja Terisi (Occupied)</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Occupied Tables</p>
           <p className="text-3xl font-extrabold text-rose-500 mt-2">{loading ? '...' : mejaTerisi}</p>
-          <p className="text-xs text-slate-500 mt-1">Meja yang saat ini digunakan</p>
+          <p className="text-xs text-slate-500 mt-1">Tables currently in use</p>
         </div>
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Pesanan Aktif</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Orders</p>
           <p className="text-3xl font-extrabold text-emerald-500 mt-2">{loading ? '...' : pesananAktif}</p>
-          <p className="text-xs text-slate-500 mt-1">Pesanan sedang dimasak / belum bayar</p>
+          <p className="text-xs text-slate-500 mt-1">Orders being cooked / unpaid</p>
         </div>
       </div>
 
@@ -94,14 +94,14 @@ export default function EmployeePortalPage() {
               🪑
             </div>
             <h3 className="text-lg font-bold text-white group-hover:text-amber-500 transition-colors">
-              Modul Pelayan
+              Waiter Module
             </h3>
             <p className="text-sm text-slate-400 mt-2">
-              Kelola status keterisian meja restoran dan buat pesanan baru langsung untuk pelanggan.
+              Manage restaurant table occupancy status and create new orders directly for customers.
             </p>
           </div>
           <div className="mt-6 flex items-center text-xs font-semibold text-amber-500">
-            <span>Buka Modul Pelayan</span>
+            <span>Open Waiter Module</span>
             <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </Link>
@@ -116,14 +116,14 @@ export default function EmployeePortalPage() {
               👨‍🍳
             </div>
             <h3 className="text-lg font-bold text-white group-hover:text-emerald-500 transition-colors">
-              Layar Dapur (Koki)
+              Kitchen Display (Chef)
             </h3>
             <p className="text-sm text-slate-400 mt-2">
-              Pantau antrean pesanan yang masuk secara real-time dan perbarui status hidangan jika sudah selesai.
+              Monitor incoming order queues in real-time and update dish status when completed.
             </p>
           </div>
           <div className="mt-6 flex items-center text-xs font-semibold text-emerald-500">
-            <span>Buka Layar Dapur</span>
+            <span>Open Kitchen Display</span>
             <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </Link>
@@ -138,14 +138,14 @@ export default function EmployeePortalPage() {
               💳
             </div>
             <h3 className="text-lg font-bold text-white group-hover:text-blue-500 transition-colors">
-              Modul Kasir
+              Cashier Module
             </h3>
             <p className="text-sm text-slate-400 mt-2">
-              Proses validasi pembayaran tagihan pelanggan, cetak nota, dan otomatis selesaikan status meja.
+              Process customer bill payment validation, print receipts, and automatically clear table status.
             </p>
           </div>
           <div className="mt-6 flex items-center text-xs font-semibold text-blue-500">
-            <span>Buka Modul Kasir</span>
+            <span>Open Cashier Module</span>
             <span className="ml-1 group-hover:translate-x-1 transition-transform">→</span>
           </div>
         </Link>

@@ -1,9 +1,10 @@
+// prisma/seed.ts
 import { RolePegawai, StatusMeja, StatusBahan } from '@prisma/client';
 import prisma from '../src/lib/prisma';
 import bcrypt from 'bcryptjs';
 
 async function main() {
-  console.log('menghapus data lama (jika ada)...');
+  console.log('removing old data (if any)...');
   
   await prisma.laporan.deleteMany();
   await prisma.detailPesanan.deleteMany();
@@ -15,20 +16,20 @@ async function main() {
   await prisma.pegawai.deleteMany();
   await prisma.pelanggan.deleteMany();
 
-  console.log('memasukkan data pegawai (team bandros)...');
+  console.log('inserting employee data (team bandros)...');
   
   const defaultPin = await bcrypt.hash('123456', 10);
 
   await prisma.pegawai.createMany({
     data: [
-      { id: 'OWNER-001', pin: defaultPin, namaPegawai: 'Salsabila Khoirunnisa (Pemilik RestoLink)', jabatan: RolePegawai.PEMILIK },
-      { id: 'KASIR-001', pin: defaultPin, namaPegawai: 'Serena Luthfiana (Kasir Utama)', jabatan: RolePegawai.KASIR },
+      { id: 'OWNER-001', pin: defaultPin, namaPegawai: 'Salsabila Khoirunnisa (Owner)', jabatan: RolePegawai.PEMILIK },
+      { id: 'KASIR-001', pin: defaultPin, namaPegawai: 'Serena Luthfiana (Cashier)', jabatan: RolePegawai.KASIR },
       { id: 'KOKI-001', pin: defaultPin, namaPegawai: 'Daisy Maria (Head Chef)', jabatan: RolePegawai.KOKI },
-      { id: 'PLYN-001', pin: defaultPin, namaPegawai: 'Najwa Nurul (Pelayan Senior)', jabatan: RolePegawai.PELAYAN },
+      { id: 'PLYN-001', pin: defaultPin, namaPegawai: 'Najwa Nurul (Senior Waiter)', jabatan: RolePegawai.PELAYAN },
     ],
   });
 
-  console.log('memasukkan data meja restoran...');
+  console.log('inserting restaurant table data...');
   
   const mejaData = Array.from({ length: 15 }).map((_, i) => ({
     noMeja: i + 1,
@@ -36,24 +37,20 @@ async function main() {
   }));
   await prisma.meja.createMany({ data: mejaData });
 
-  console.log('memasukkan data menu fancy fine dining...');
+  console.log('inserting mockup menu data...');
   
   await prisma.menu.createMany({
     data: [
-      { namaMenu: 'A5 Wagyu Tomahawk with 24K Gold Leaf', harga: 4500000 },
-      { namaMenu: 'Beluga Caviar Blini (50g)', harga: 3200000 },
-      { namaMenu: 'Lobster Thermidor', harga: 1800000 },
-      { namaMenu: 'Foie Gras & Black Truffle Risotto', harga: 1500000 },
-      { namaMenu: 'Saffron Infused Bouillabaisse', harga: 1400000 },
-      { namaMenu: 'Pan-Seared Hokkaido Scallops', harga: 1200000 },
-      { namaMenu: 'White Truffle Mac & Cheese', harga: 1100000 },
-      { namaMenu: 'Duck Confit with Cherry Reduction', harga: 950000 },
-      { namaMenu: 'Escargot de Saint-Malo', harga: 850000 },
-      { namaMenu: 'Valrhona Chocolate Soufflé', harga: 650000 },
+      { namaMenu: 'WAGYU A5 FILLET MIGNON WITH TRUFFLE SHAVINGS', harga: 2000000 },
+      { namaMenu: '45-DAY DRY-AGED T-BONE STEAK', harga: 2800000 },
+      { namaMenu: '24K GOLD LEAF TOMAHAWK RIBEYE', harga: 5000000 },
+      { namaMenu: 'ARTESIAN CRYSTAL WATER', harga: 120000 },
+      { namaMenu: 'TRUFFLE-INFUSED SMOKY OLD FASHIONED', harga: 300000 },
+      { namaMenu: '24K GOLD DUST ESPRESSO MARTINI', harga: 450000 },
     ],
   });
 
-  console.log('memasukkan data inventaris bahan baku...');
+  console.log('inserting raw material inventory data...');
   
   await prisma.bahanBaku.createMany({
     data: [
@@ -67,14 +64,15 @@ async function main() {
     ],
   });
 
-  console.log('seeding database selesai! 🍽️✨');
+  console.log('database seeding completed! 🍽️✨');
 }
 
 main()
   .catch((e) => {
-    console.error('terjadi kesalahan saat seeding:', e);
+    console.error('error occurred during seeding:', e);
     process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
   });
+  

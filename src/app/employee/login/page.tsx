@@ -1,3 +1,4 @@
+// employee login page component updated for full english translation
 'use client';
 
 import Image from 'next/image';
@@ -33,10 +34,10 @@ export default function EmployeeLoginPage() {
         else if (role === 'PEMILIK') router.push('/employee/pemilik');
         else router.push('/employee');
       } else {
-        setPesanError(result.pesan || 'Gagal masuk ke sistem.');
+        setPesanError(result.pesan || 'Failed to login to the system.');
       }
     } catch (err) {
-      setPesanError('Terjadi kesalahan koneksi sistem.');
+      setPesanError('System connection error occurred.');
     } finally {
       setLoading(false);
     }
@@ -58,7 +59,7 @@ export default function EmployeeLoginPage() {
           </div>
           <div>
             <h1 className="text-2xl font-extrabold text-resto-navy tracking-wide">RestoLink</h1>
-            <p className="text-xs text-slate-500 mt-1">Portal Masuk Operasional Karyawan</p>
+            <p className="text-xs text-slate-500 mt-1">Employee Operational Login Portal</p>
           </div>
         </div>
 
@@ -71,27 +72,28 @@ export default function EmployeeLoginPage() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-              Jabatan / Peran
+              Position / Role
             </label>
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
               className="w-full bg-slate-50 border border-slate-300 px-3 py-2.5 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-resto-navy"
             >
-              <option value="PELAYAN">Pelayan (Area Meja)</option>
-              <option value="KOKI">Koki (Layar Dapur & Bahan Baku)</option>
-              <option value="KASIR">Kasir (Pembayaran & Nota)</option>
-              <option value="PEMILIK">Pemilik Restoran (Dashboard & Laporan)</option>
+              {/* values remain strictly in indonesian to preserve database enum integrity */}
+              <option value="PELAYAN">Waiter (Table Area)</option>
+              <option value="KOKI">Chef (Kitchen & Raw Materials)</option>
+              <option value="KASIR">Cashier (Payments & Receipts)</option>
+              <option value="PEMILIK">Owner (Dashboard & Reports)</option>
             </select>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-              ID Karyawan / Pemilik
+              Employee / Owner ID
             </label>
             <input
               type="text"
-              placeholder="Contoh: KASIR-001"
+              placeholder="Example: KASIR-001"
               value={idPegawai}
               onChange={(e) => setIdPegawai(e.target.value)}
               required
@@ -101,11 +103,11 @@ export default function EmployeeLoginPage() {
 
           <div>
             <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-              PIN Akses
+              Access PIN
             </label>
             <input
               type="password"
-              placeholder="Masukkan PIN Anda"
+              placeholder="Enter your PIN"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               required
@@ -118,7 +120,7 @@ export default function EmployeeLoginPage() {
             disabled={loading}
             className="w-full py-3 bg-resto-orange hover:opacity-90 text-white font-bold rounded-lg text-sm transition-all shadow-md disabled:opacity-50 mt-2"
           >
-            {loading ? 'Memvalidasi...' : 'Masuk ke Portal Karyawan'}
+            {loading ? 'Validating...' : 'Login to Employee Portal'}
           </button>
         </form>
       </div>

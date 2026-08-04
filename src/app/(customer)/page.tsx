@@ -1,25 +1,39 @@
-// customer interface strictly matched with figma design including full-screen welcome and custom scrollbar
+// customer interface strictly matched with figma design, using dynamic database menu
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
-// dummy data based on the figma design
-const MOCK_MENU = [
-  { id: '1', name: 'WAGYU A5 FILLET MIGNON WITH TRUFFLE SHAVINGS', price: 2000000, img: '/menu/wagyu.png' },
-  { id: '2', name: '45-DAY DRY-AGED T-BONE STEAK', price: 2800000, img: '/menu/tbone.png' },
-  { id: '3', name: '24K GOLD LEAF TOMAHAWK RIBEYE', price: 5000000, img: '/menu/ribeye.png' },
-  { id: '4', name: 'ARTESIAN CRYSTAL WATER', price: 120000, img: '/menu/water.png' },
-  { id: '5', name: 'TRUFFLE-INFUSED SMOKY OLD FASHIONED', price: 300000, img: '/menu/oldfashioned.png' },
-  { id: '6', name: '24K GOLD DUST ESPRESSO MARTINI', price: 450000, img: '/menu/martini.png' },
-];
+interface MenuData {
+  id: string;
+  namaMenu: string;
+  harga: number;
+}
 
 export default function CustomerOrderPage() {
   const [showWelcome, setShowWelcome] = useState(true);
+  const [menus, setMenus] = useState<MenuData[]>([]);
   const [cart, setCart] = useState<{ id: string; qty: number }[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [paymentType, setPaymentType] = useState<'CASH' | 'CASHLESS' | null>(null);
+  const [isOrdering, setIsOrdering] = useState(false);
+
+  // fetch menu from database
+  useEffect(() => {
+    async function fetchMenu() {
+      try {
+        const res = await fetch('/api/menu');
+        const data = await res.json();
+        if (data.sukses) {
+          setMenus(data.data);
+        }
+      } catch (err) {
+        console.error('failed to fetch menu:', err);
+      }
+    }
+    fetchMenu();
+  }, []);
 
   // handle add to cart
   const addToCart = (id: string, change: number) => {
@@ -38,13 +52,49 @@ export default function CustomerOrderPage() {
   // calculate totals
   const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
   const totalPrice = cart.reduce((sum, item) => {
-    const menuItem = MOCK_MENU.find((m) => m.id === item.id);
-    return sum + (menuItem?.price || 0) * item.qty;
+    const menuItem = menus.find((m) => m.id === item.id);
+    return sum + (menuItem?.harga || 0) * item.qty;
   }, 0);
 
-  // order checkout process
-  const handleOrder = () => {
-    if (cart.length > 0) setShowPaymentModal(true);
+  // order checkout process saving to database
+  const handleOrder = async () => {
+    if (cart.length === 0) return;
+    setIsOrdering(true);
+
+    try {
+      // create payload to send to pesanan api
+      const payload = {
+        namaPelanggan: 'Table 10 Guest',
+        jumlahOrang: 2,
+        noMeja: 10,
+        detailPesanan: cart.map(item => {
+          const m = menus.find(x => x.id === item.id)!;
+          return {
+            idMenu: item.id,
+            jumlahPesanan: item.qty,
+            subtotal: m.harga * item.qty
+          };
+        })
+      };
+
+      const res = await fetch('/api/pesanan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await res.json();
+      if (result.sukses) {
+        setShowPaymentModal(true);
+      } else {
+        alert(result.pesan || 'Failed to process order.');
+      }
+    } catch (err) {
+      console.error('order submission error:', err);
+      alert('System error. Please try again.');
+    } finally {
+      setIsOrdering(false);
+    }
   };
 
   const handleSelectPayment = (type: 'CASH' | 'CASHLESS') => {
@@ -147,7 +197,7 @@ export default function CustomerOrderPage() {
         {/* menu list section */}
         <div className="flex-1 relative z-10 p-8 overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto pb-10">
-            {MOCK_MENU.map((menu) => (
+            {menus.map((menu) => (
               <div 
                 key={menu.id} 
                 onClick={() => addToCart(menu.id, 1)}
@@ -160,8 +210,8 @@ export default function CustomerOrderPage() {
                    </div>
                    {/* item details */}
                    <div className="flex-1">
-                     <h3 className="text-[#D4AF37] text-lg font-bold tracking-widest uppercase mb-2 leading-snug">{menu.name}</h3>
-                     <p className="text-[#D4AF37]/80 text-base tracking-widest font-semibold">Rp. {menu.price.toLocaleString('id-ID')}</p>
+                     <h3 className="text-[#D4AF37] text-lg font-bold tracking-widest uppercase mb-2 leading-snug">{menu.namaMenu}</h3>
+                     <p className="text-[#D4AF37]/80 text-base tracking-widest font-semibold">Rp. {menu.harga.toLocaleString('id-ID')}</p>
                    </div>
                  </div>
               </div>
@@ -184,17 +234,18 @@ export default function CustomerOrderPage() {
             {/* cart items */}
             <div className="space-y-4">
               {cart.length === 0 ? (
-                <p className="text-base italic text-center text-[#D4AF37]/40 mt-20 tracking-wider">Silahkan Pilih Menu...</p>
+                <p className="text-base italic text-center text-[#D4AF37]/40 mt-20 tracking-wider">Please select a menu...</p>
               ) : (
                 cart.map((cartItem) => {
-                  const menu = MOCK_MENU.find((m) => m.id === cartItem.id)!;
+                  const menu = menus.find((m) => m.id === cartItem.id);
+                  if (!menu) return null;
                   return (
                     <div key={menu.id} className="bg-[#151515] border border-[#D4AF37]/30 rounded-xl p-4 flex justify-between items-center shadow-lg">
                       <div className="flex items-center space-x-4 w-[65%]">
                         <div className="w-16 h-12 bg-[#222222] rounded shrink-0 flex items-center justify-center text-[9px] text-[#D4AF37]/30">IMG</div>
                         <div className="overflow-hidden">
-                          <h4 className="text-[12px] text-[#D4AF37] font-bold leading-snug uppercase truncate">{menu.name}</h4>
-                          <p className="text-[11px] text-[#D4AF37]/70 mt-1 font-semibold tracking-wider">Rp. {menu.price.toLocaleString('id-ID')}</p>
+                          <h4 className="text-[12px] text-[#D4AF37] font-bold leading-snug uppercase truncate">{menu.namaMenu}</h4>
+                          <p className="text-[11px] text-[#D4AF37]/70 mt-1 font-semibold tracking-wider">Rp. {menu.harga.toLocaleString('id-ID')}</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3 text-[#D4AF37]">
@@ -218,10 +269,10 @@ export default function CustomerOrderPage() {
                </div>
                <button 
                 onClick={handleOrder}
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || isOrdering}
                 className="bg-[#0A192F] text-[#D4AF37] px-8 py-4 rounded-xl text-xl font-bold tracking-widest hover:bg-black transition-colors disabled:opacity-50 shadow-lg"
                >
-                 Order
+                 {isOrdering ? 'PROCESSING...' : 'ORDER'}
                </button>
             </div>
           </div>
@@ -293,11 +344,12 @@ export default function CustomerOrderPage() {
 
                  <div className="border-t-[3px] border-b-[3px] border-[#0A192F] py-6 space-y-4 text-xs font-bold flex-1 tracking-wider custom-scrollbar overflow-y-auto max-h-[250px]">
                     {cart.map(item => {
-                       const m = MOCK_MENU.find(x => x.id === item.id)!;
+                       const m = menus.find(x => x.id === item.id);
+                       if (!m) return null;
                        return (
                          <div key={item.id} className="flex justify-between items-center">
-                           <span className="w-2/3 pr-4 leading-relaxed">{item.qty} &nbsp; {m.name}</span>
-                           <span>Rp. {(m.price * item.qty).toLocaleString('id-ID')}</span>
+                           <span className="w-2/3 pr-4 leading-relaxed">{item.qty} &nbsp; {m.namaMenu}</span>
+                           <span>Rp. {(m.harga * item.qty).toLocaleString('id-ID')}</span>
                          </div>
                        )
                     })}

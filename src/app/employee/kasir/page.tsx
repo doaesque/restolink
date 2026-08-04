@@ -1,4 +1,4 @@
-// cashier module interface for processing billing and receipt validation
+// cashier module interface updated with english translation
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -80,21 +80,21 @@ export default function KasirPage() {
       if (result.sukses) {
         setPesanNotif({
           tipe: 'sukses',
-          teks: `Pembayaran Nota ${selectedPesanan.noNota} berhasil dikonfirmasi. Meja ${selectedPesanan.noMeja} telah dikosongkan.`,
+          teks: `Payment for Receipt ${selectedPesanan.noNota} successfully confirmed. Table ${selectedPesanan.noMeja} has been cleared.`,
         });
         setSelectedPesanan(null);
         fetchOrders();
       } else {
         setPesanNotif({
           tipe: 'error',
-          teks: result.pesan || 'Gagal memproses pembayaran.',
+          teks: result.pesan || 'Failed to process payment.',
         });
       }
     } catch (err) {
       console.error('failed to process cashier payment:', err);
       setPesanNotif({
         tipe: 'error',
-        teks: 'Terjadi kesalahan sistem saat memproses pembayaran.',
+        teks: 'System error occurred while processing payment.',
       });
     } finally {
       setProcessing(false);
@@ -102,7 +102,7 @@ export default function KasirPage() {
   }
 
   if (loading) {
-    return <div className="text-center py-12 text-slate-500">Memuat modul kasir...</div>;
+    return <div className="text-center py-12 text-slate-500">Loading cashier module...</div>;
   }
 
   const pesananUnpaid = listPesanan.filter((p) => p.statusTagihan === 'UNPAID');
@@ -110,8 +110,8 @@ export default function KasirPage() {
   return (
     <div className="space-y-6 text-slate-800">
       <div>
-        <h2 className="text-2xl font-bold text-resto-navy">Modul Kasir & Pembayaran</h2>
-        <p className="text-sm text-slate-500">Validasi pembayaran pelanggan dan proses cetak kwitansi nota.</p>
+        <h2 className="text-2xl font-bold text-resto-navy">Cashier & Payment Module</h2>
+        <p className="text-sm text-slate-500">Validate customer payments and process receipt finalization.</p>
       </div>
 
       {pesanNotif && (
@@ -130,12 +130,12 @@ export default function KasirPage() {
         {/* unpaid order list */}
         <div className="lg:col-span-2 bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
           <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-            Daftar Tagihan Belum Dibayar (Unpaid)
+            Unpaid Billing List
           </h3>
 
           {pesananUnpaid.length === 0 ? (
             <p className="text-xs text-slate-400 italic py-8 text-center">
-              Tidak ada tagihan yang belum dibayar.
+              No unpaid bills available.
             </p>
           ) : (
             <div className="space-y-3">
@@ -158,14 +158,14 @@ export default function KasirPage() {
                     <div>
                       <div className="flex items-center space-x-2">
                         <span className="text-xs font-bold text-resto-orange">
-                          Meja {pesanan.noMeja}
+                          Table {pesanan.noMeja}
                         </span>
                         <span className="text-xs text-slate-400">•</span>
                         <span className="text-xs font-bold text-slate-800">
                           {pesanan.pelanggan.namaPelanggan}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-1">ID Nota: {pesanan.noNota}</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Receipt ID: {pesanan.noNota}</p>
                     </div>
 
                     <div className="text-right">
@@ -186,27 +186,27 @@ export default function KasirPage() {
         {/* payment settlement breakdown */}
         <div className="bg-white border border-slate-200 p-5 rounded-xl space-y-4 shadow-sm">
           <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-            Rincian Pembayaran
+            Payment Details
           </h3>
 
           {!selectedPesanan ? (
             <p className="text-xs text-slate-400 italic py-8 text-center">
-              Pilih tagihan dari daftar di samping untuk diproses.
+              Select a bill from the list to process.
             </p>
           ) : (
             <div className="space-y-4">
               <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
                 <p className="text-slate-500">
-                  Pelanggan: <span className="text-slate-800 font-bold">{selectedPesanan.pelanggan.namaPelanggan}</span>
+                  Customer: <span className="text-slate-800 font-bold">{selectedPesanan.pelanggan.namaPelanggan}</span>
                 </p>
                 <p className="text-slate-500">
-                  Meja: <span className="text-resto-orange font-bold">{selectedPesanan.noMeja}</span>
+                  Table: <span className="text-resto-orange font-bold">{selectedPesanan.noMeja}</span>
                 </p>
               </div>
 
               {/* itemized list */}
               <div className="space-y-2 border-t border-slate-200 pt-3">
-                <p className="text-xs font-bold text-slate-600">Rincian Item:</p>
+                <p className="text-xs font-bold text-slate-600">Item Details:</p>
                 {selectedPesanan.detailPesanan.map((item) => (
                   <div key={item.idDetail} className="flex justify-between text-xs text-slate-700">
                     <span className="font-medium">
@@ -219,21 +219,22 @@ export default function KasirPage() {
 
               {/* payment method selection */}
               <div className="border-t border-slate-200 pt-3 space-y-2">
-                <label className="block text-xs font-semibold text-slate-500">Metode Pembayaran</label>
+                <label className="block text-xs font-semibold text-slate-500">Payment Method</label>
                 <select
                   value={metodePembayaran}
                   onChange={(e) => setMetodePembayaran(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-resto-navy"
                 >
-                  <option value="TUNAI">Tunai / Cash</option>
+                  {/* value remains intact to match database enum exactly */}
+                  <option value="TUNAI">Cash</option>
                   <option value="QRIS">QRIS</option>
-                  <option value="DEBIT">Kartu Debit</option>
+                  <option value="DEBIT">Debit Card</option>
                 </select>
               </div>
 
               {/* total calculation */}
               <div className="border-t border-slate-200 pt-3 flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-500">Total Tagihan:</span>
+                <span className="text-xs font-bold text-slate-500">Total Bill:</span>
                 <span className="text-lg font-extrabold text-emerald-700">
                   Rp{' '}
                   {selectedPesanan.detailPesanan
@@ -248,7 +249,7 @@ export default function KasirPage() {
                 disabled={processing}
                 className="w-full py-2.5 bg-resto-navy hover:opacity-90 text-white font-bold rounded-lg text-sm transition-colors shadow-sm disabled:opacity-50"
               >
-                {processing ? 'Memproses Pembayaran...' : 'Konfirmasi Pembayaran Lunas'}
+                {processing ? 'Processing Payment...' : 'Confirm Payment as Paid'}
               </button>
             </div>
           )}
