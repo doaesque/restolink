@@ -40,7 +40,7 @@ export async function GET() {
     });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Gagal mengambil data riwayat laporan.' },
+      { sukses: false, pesan: 'Failed to fetch report history data.' },
       { status: 500 }
     );
   }

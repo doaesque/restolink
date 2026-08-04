@@ -1,10 +1,11 @@
+
 // authentication api route for employee logout
 import { NextResponse } from 'next/server';
 
 export async function POST() {
   const response = NextResponse.json({
     sukses: true,
-    pesan: 'Berhasil keluar dari sistem.',
+    pesan: 'Successfully logged out from the system.',
   });
 
   // clear employee session cookie

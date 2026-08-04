@@ -1,45 +1,16 @@
-// api route for managing menu
+// api route for fetching menu items from the database
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// handle get request to fetch all menu items
 export async function GET() {
   try {
-    const menus = await prisma.menu.findMany();
-    return NextResponse.json({ sukses: true, data: menus });
-  } catch (error) {
-    return NextResponse.json(
-      { sukses: false, pesan: 'Gagal mengambil data menu.' },
-      { status: 500 }
-    );
-  }
-}
-
-// handle post request to create a new menu item
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { namaMenu, harga } = body;
-
-    // validate input
-    if (!namaMenu || harga === undefined) {
-      return NextResponse.json(
-        { sukses: false, pesan: 'Nama menu dan harga wajib diisi.' },
-        { status: 400 }
-      );
-    }
-
-    const newMenu = await prisma.menu.create({
-      data: {
-        namaMenu,
-        harga: parseFloat(harga),
-      },
+    const menu = await prisma.menu.findMany({
+      orderBy: { namaMenu: 'asc' },
     });
-
-    return NextResponse.json({ sukses: true, data: newMenu }, { status: 201 });
+    return NextResponse.json({ sukses: true, data: menu });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Gagal menambahkan menu baru.' },
+      { sukses: false, pesan: 'Failed to fetch menu data.' },
       { status: 500 }
     );
   }

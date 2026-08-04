@@ -1,4 +1,4 @@
-// api route for managing orders with multi-table support and status updates
+// api route for managing orders with english response messages
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
@@ -23,7 +23,7 @@ export async function GET() {
     return NextResponse.json({ sukses: true, data: pesanan });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Gagal mengambil data pesanan.' },
+      { sukses: false, pesan: 'Failed to fetch order data.' },
       { status: 500 }
     );
   }
@@ -35,26 +35,24 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { namaPelanggan, jumlahOrang, noMeja, detailPesanan } = body;
 
-    // input validation (noMeja can be a single number or an array of numbers)
+    // input validation
     const daftarMeja = Array.isArray(noMeja) ? noMeja : [noMeja];
 
     if (!namaPelanggan || !jumlahOrang || daftarMeja.length === 0 || !detailPesanan || detailPesanan.length === 0) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Data pesanan tidak lengkap.' },
+        { sukses: false, pesan: 'Incomplete order data.' },
         { status: 400 }
       );
     }
 
     // create customer, order, order details, and update all selected tables in a transaction
     const pesananBaru = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // 1. create new customer
       const pelanggan = await tx.pelanggan.create({
         data: {
           namaPelanggan,
         },
       });
 
-      // 2. create the order using the primary table number
       const primaryMeja = parseInt(daftarMeja[0].toString());
 
       const pesanan = await tx.pesanan.create({
@@ -75,7 +73,6 @@ export async function POST(request: Request) {
         },
       });
 
-      // 3. update all selected tables to occupied status
       for (const m of daftarMeja) {
         await tx.meja.update({
           where: { noMeja: parseInt(m.toString()) },
@@ -89,7 +86,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ sukses: true, data: pesananBaru }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Gagal membuat pesanan baru. Pastikan nomor meja valid dan belum terisi.' },
+      { sukses: false, pesan: 'Failed to create new order. Ensure table numbers are valid and unoccupied.' },
       { status: 500 }
     );
   }
@@ -103,7 +100,7 @@ export async function PATCH(request: Request) {
 
     if (!noNota || !statusPesanan) {
       return NextResponse.json(
-        { sukses: false, pesan: 'ID Nota dan status pesanan wajib diisi.' },
+        { sukses: false, pesan: 'Receipt ID and order status are required.' },
         { status: 400 }
       );
     }
@@ -116,7 +113,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ sukses: true, data: updatedPesanan });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Gagal memperbarui status pesanan.' },
+      { sukses: false, pesan: 'Failed to update order status.' },
       { status: 500 }
     );
   }

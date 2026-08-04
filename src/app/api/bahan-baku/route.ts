@@ -13,7 +13,7 @@ export async function GET() {
     return NextResponse.json({ sukses: true, data: bahanBaku });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Gagal mengambil data bahan baku.' },
+      { sukses: false, pesan: 'Failed to fetch raw material data.' },
       { status: 500 }
     );
   }
@@ -27,7 +27,7 @@ export async function PATCH(request: Request) {
 
     if (!id || !statusBahan) {
       return NextResponse.json(
-        { sukses: false, pesan: 'ID dan status bahan baku wajib diisi.' },
+        { sukses: false, pesan: 'Raw material ID and status are required.' },
         { status: 400 }
       );
     }
@@ -40,7 +40,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ sukses: true, data: updatedBahan });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Gagal memperbarui status bahan baku.' },
+      { sukses: false, pesan: 'Failed to update raw material status.' },
       { status: 500 }
     );
   }
