@@ -50,7 +50,7 @@ export default function PelayanPage() {
       if (dataMenu.sukses) setListMenu(dataMenu.data);
     } catch (err) {
       console.error('error loading waiter data:', err);
-      setPesan({ tipe: 'error', teks: 'Terjadi kesalahan saat memuat data.' });
+      setPesan({ tipe: 'error', teks: 'An error occurred while loading data.' });
     } finally {
       setLoading(false);
     }
@@ -96,15 +96,15 @@ export default function PelayanPage() {
   async function handleSubmitOrder(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedMeja) {
-      setPesan({ tipe: 'error', teks: 'Silakan pilih nomor meja terlebih dahulu.' });
+      setPesan({ tipe: 'error', teks: 'Please select a table number first.' });
       return;
     }
     if (!namaPelanggan.trim()) {
-      setPesan({ tipe: 'error', teks: 'Silakan masukkan nama pelanggan.' });
+      setPesan({ tipe: 'error', teks: "Please enter the customer's name." });
       return;
     }
     if (cart.length === 0) {
-      setPesan({ tipe: 'error', teks: 'Pilih minimal satu menu untuk dipesan.' });
+      setPesan({ tipe: 'error', teks: 'Select at least one menu to order.' });
       return;
     }
 
@@ -132,32 +132,32 @@ export default function PelayanPage() {
       const result = await response.json();
 
       if (result.sukses) {
-        setPesan({ tipe: 'sukses', teks: 'Pesanan berhasil dibuat dan diteruskan ke Koki!' });
+        setPesan({ tipe: 'sukses', teks: 'Order successfully created and forwarded to the Chef!' });
         setCart([]);
         setNamaPelanggan('');
         setSelectedMeja(null);
         setJumlahOrang(1);
         fetchData();
       } else {
-        setPesan({ tipe: 'error', teks: result.pesan || 'Gagal membuat pesanan.' });
+        setPesan({ tipe: 'error', teks: result.pesan || 'Failed to create order.' });
       }
     } catch (err) {
       console.error('error submitting order:', err);
-      setPesan({ tipe: 'error', teks: 'Terjadi kesalahan sistem saat mengirim pesanan.' });
+      setPesan({ tipe: 'error', teks: 'A system error occurred while submitting the order.' });
     } finally {
       setSubmitting(false);
     }
   }
 
   if (loading) {
-    return <div className="text-center py-12 text-slate-400">Memuat data modul pelayan...</div>;
+    return <div className="text-center py-12 text-slate-400">Loading waiter module data...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-white">Modul Pelayan & Manajemen Meja</h2>
-        <p className="text-sm text-slate-400">Pilih meja dan buat pesanan baru untuk pelanggan yang datang.</p>
+        <h2 className="text-2xl font-bold text-white">Waiter Module & Table Management</h2>
+        <p className="text-sm text-slate-400">Select a table and create a new order for incoming customers.</p>
       </div>
 
       {pesan && (
@@ -175,7 +175,7 @@ export default function PelayanPage() {
       {/* table selection grid */}
       <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">
         <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
-          Status Ketersediaan Meja
+          Table Availability Status
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
           {listMeja.map((meja) => {
@@ -195,10 +195,10 @@ export default function PelayanPage() {
                     : 'bg-slate-950 border-slate-800 text-slate-200 hover:border-slate-700'
                 }`}
               >
-                <span className="text-xs uppercase font-medium">Meja</span>
+                <span className="text-xs uppercase font-medium">Table</span>
                 <span className="text-xl font-extrabold">{meja.noMeja}</span>
                 <span className="text-[10px] uppercase tracking-wider mt-1">
-                  {isOccupied ? 'Occupied' : isSelected ? 'Dipilih' : 'Tersedia'}
+                  {isOccupied ? 'Occupied' : isSelected ? 'Selected' : 'Available'}
                 </span>
               </button>
             );
@@ -211,7 +211,7 @@ export default function PelayanPage() {
         {/* menu selection list */}
         <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4">
           <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
-            Katalog Menu Restoran
+            Restaurant Menu Catalog
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {listMenu.map((menu) => (
@@ -230,7 +230,7 @@ export default function PelayanPage() {
                   onClick={() => addToCart(menu)}
                   className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500 hover:text-slate-950 rounded-lg text-xs font-semibold transition-all"
                 >
-                  + Tambah
+                  + Add
                 </button>
               </div>
             ))}
@@ -240,25 +240,25 @@ export default function PelayanPage() {
         {/* order checkout form */}
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-4">
           <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
-            Detail Pesanan Baru
+            New Order Details
           </h3>
 
           <form onSubmit={handleSubmitOrder} className="space-y-4">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Nomor Meja</label>
+              <label className="block text-xs text-slate-400 mb-1">Table Number</label>
               <input
                 type="text"
                 readOnly
-                value={selectedMeja ? `Meja ${selectedMeja}` : 'Belum Dipilih'}
+                value={selectedMeja ? `Table ${selectedMeja}` : 'Not Selected'}
                 className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-sm text-slate-300 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Nama Pelanggan</label>
+              <label className="block text-xs text-slate-400 mb-1">Customer Name</label>
               <input
                 type="text"
-                placeholder="Masukkan nama pelanggan"
+                placeholder="Enter customer name"
                 value={namaPelanggan}
                 onChange={(e) => setNamaPelanggan(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded-lg text-sm text-white focus:outline-none focus:border-amber-500"
@@ -266,7 +266,7 @@ export default function PelayanPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Jumlah Tamu/Orang</label>
+              <label className="block text-xs text-slate-400 mb-1">Number of Guests</label>
               <input
                 type="number"
                 min="1"
@@ -278,9 +278,9 @@ export default function PelayanPage() {
 
             {/* cart items list */}
             <div className="border-t border-slate-800 pt-3 space-y-2">
-              <p className="text-xs font-semibold text-slate-400">Ringkasan Makanan:</p>
+              <p className="text-xs font-semibold text-slate-400">Order Summary:</p>
               {cart.length === 0 ? (
-                <p className="text-xs text-slate-600 italic">Belum ada item dipilih.</p>
+                <p className="text-xs text-slate-600 italic">No items selected yet.</p>
               ) : (
                 cart.map((item) => (
                   <div
@@ -312,7 +312,7 @@ export default function PelayanPage() {
 
             {/* total and submit button */}
             <div className="border-t border-slate-800 pt-3 flex justify-between items-center">
-              <span className="text-xs font-semibold text-slate-400">Total Harga:</span>
+              <span className="text-xs font-semibold text-slate-400">Total Price:</span>
               <span className="text-base font-bold text-amber-500">
                 Rp {totalSubtotal.toLocaleString('id-ID')}
               </span>
@@ -323,7 +323,7 @@ export default function PelayanPage() {
               disabled={submitting}
               className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-sm transition-colors disabled:opacity-50"
             >
-              {submitting ? 'Mengirim...' : 'Kirim Pesanan ke Dapur'}
+              {submitting ? 'Submitting...' : 'Send Order to Kitchen'}
             </button>
           </form>
         </div>

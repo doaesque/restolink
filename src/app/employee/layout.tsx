@@ -1,4 +1,4 @@
-// employee section shared layout component
+// employee section shared layout component updated for english translation
 'use client';
 
 import Image from 'next/image';
@@ -34,7 +34,7 @@ export default function EmployeeLayout({
           </div>
           <div>
             <h1 className="font-extrabold text-lg text-resto-navy tracking-wide">RestoLink</h1>
-            <p className="text-[10px] text-slate-500 font-medium">Sistem Operasional Karyawan</p>
+            <p className="text-[10px] text-slate-500 font-medium">Employee Operational System</p>
           </div>
         </div>
 
@@ -44,14 +44,14 @@ export default function EmployeeLayout({
             href="/employee"
             className="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
           >
-            Portal Utama
+            Main Portal
           </Link>
           <form action="/api/auth/logout" method="POST">
             <button
               type="submit"
               className="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors bg-resto-orange text-white hover:opacity-90 shadow-sm"
             >
-              Keluar
+              Logout
             </button>
           </form>
         </div>
