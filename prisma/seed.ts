@@ -1,5 +1,4 @@
 // prisma/seed.ts
-import { RolePegawai, StatusMeja, StatusBahan } from '@prisma/client';
 import prisma from '../src/lib/prisma';
 import bcrypt from 'bcryptjs';
 
@@ -22,10 +21,10 @@ async function main() {
 
   await prisma.pegawai.createMany({
     data: [
-      { id: 'OWNER-001', pin: defaultPin, namaPegawai: 'Salsabila Khoirunnisa (Owner)', jabatan: RolePegawai.PEMILIK },
-      { id: 'KASIR-001', pin: defaultPin, namaPegawai: 'Serena Luthfiana (Cashier)', jabatan: RolePegawai.KASIR },
-      { id: 'KOKI-001', pin: defaultPin, namaPegawai: 'Daisy Maria (Head Chef)', jabatan: RolePegawai.KOKI },
-      { id: 'PLYN-001', pin: defaultPin, namaPegawai: 'Najwa Nurul (Senior Waiter)', jabatan: RolePegawai.PELAYAN },
+      { id: 'OWNER-001', pin: defaultPin, namaPegawai: 'Salsabila Khoirunnisa (Pemilik RestoLink)', jabatan: 'PEMILIK' },
+      { id: 'KASIR-001', pin: defaultPin, namaPegawai: 'Serena Luthfiana (Kasir Utama)', jabatan: 'KASIR' },
+      { id: 'KOKI-001', pin: defaultPin, namaPegawai: 'Daisy Maria (Head Chef)', jabatan: 'KOKI' },
+      { id: 'PLYN-001', pin: defaultPin, namaPegawai: 'Najwa Nurul (Pelayan Senior)', jabatan: 'PELAYAN' },
     ],
   });
 
@@ -33,11 +32,11 @@ async function main() {
   
   const mejaData = Array.from({ length: 15 }).map((_, i) => ({
     noMeja: i + 1,
-    status: (i === 2 || i === 7) ? StatusMeja.OCCUPIED : StatusMeja.TERSEDIA,
+    status: (i === 2 || i === 7) ? 'OCCUPIED' : 'TERSEDIA',
   }));
   await prisma.meja.createMany({ data: mejaData });
 
-  console.log('inserting mockup menu data...');
+  console.log('inserting fancy fine dining menu data...');
   
   await prisma.menu.createMany({
     data: [
@@ -54,13 +53,13 @@ async function main() {
   
   await prisma.bahanBaku.createMany({
     data: [
-      { id: 'BB-01', namaBahan: 'A5 Japanese Wagyu', statusBahan: StatusBahan.TERSEDIA },
-      { id: 'BB-02', namaBahan: 'Fresh Black Truffle', statusBahan: StatusBahan.TERSEDIA },
-      { id: 'BB-03', namaBahan: 'Beluga Sturgeon Caviar', statusBahan: StatusBahan.TERSEDIA },
-      { id: 'BB-04', namaBahan: 'Hokkaido Scallops', statusBahan: StatusBahan.TERSEDIA },
-      { id: 'BB-05', namaBahan: 'Edible 24K Gold Leaf', statusBahan: StatusBahan.TERSEDIA },
-      { id: 'BB-06', namaBahan: 'Grade A Foie Gras', statusBahan: StatusBahan.TERSEDIA },
-      { id: 'BB-07', namaBahan: 'Iranian Saffron Threads', statusBahan: StatusBahan.HABIS },
+      { id: 'BB-01', namaBahan: 'A5 Japanese Wagyu', statusBahan: 'TERSEDIA' },
+      { id: 'BB-02', namaBahan: 'Fresh Black Truffle', statusBahan: 'TERSEDIA' },
+      { id: 'BB-03', namaBahan: 'Beluga Sturgeon Caviar', statusBahan: 'TERSEDIA' },
+      { id: 'BB-04', namaBahan: 'Hokkaido Scallops', statusBahan: 'TERSEDIA' },
+      { id: 'BB-05', namaBahan: 'Edible 24K Gold Leaf', statusBahan: 'TERSEDIA' },
+      { id: 'BB-06', namaBahan: 'Grade A Foie Gras', statusBahan: 'TERSEDIA' },
+      { id: 'BB-07', namaBahan: 'Iranian Saffron Threads', statusBahan: 'HABIS' },
     ],
   });
 
@@ -75,4 +74,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-  
