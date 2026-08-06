@@ -1,6 +1,5 @@
 // api route for managing orders with english response messages
 import { NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
 // handle get request to fetch all active orders
@@ -9,90 +8,90 @@ export async function GET() {
     const pesanan = await prisma.pesanan.findMany({
       include: {
         pelanggan: true,
-        meja: true,
         detailPesanan: {
           include: {
-            menu: true,
-          },
-        },
+            menu: true
+          }
+        }
       },
       orderBy: {
-        tglPesanan: 'desc',
-      },
+        tglPesanan: 'desc'
+      }
     });
+    
     return NextResponse.json({ sukses: true, data: pesanan });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Failed to fetch order data.' },
+      { sukses: false, pesan: 'failed to fetch orders.' },
       { status: 500 }
     );
   }
 }
 
-// handle post request to create a new order with multi-table support
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { namaPelanggan, jumlahOrang, noMeja, detailPesanan } = body;
+    const { idPelanggan, idPegawai, noMeja, jumlahOrang, items } = body;
 
-    // input validation
-    const daftarMeja = Array.isArray(noMeja) ? noMeja : [noMeja];
-
-    if (!namaPelanggan || !jumlahOrang || daftarMeja.length === 0 || !detailPesanan || detailPesanan.length === 0) {
+    if (!idPelanggan || !noMeja || !jumlahOrang || !items || items.length === 0) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Incomplete order data.' },
+        { sukses: false, pesan: 'incomplete order data provided.' },
         { status: 400 }
       );
     }
 
-    // create customer, order, order details, and update all selected tables in a transaction
-    const pesananBaru = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const pelanggan = await tx.pelanggan.create({
-        data: {
-          namaPelanggan,
-        },
-      });
-
-      const primaryMeja = parseInt(daftarMeja[0].toString());
-
+    // execute transaction using 'any' to bypass strict prisma client typing issues on vercel
+    const newOrder = await prisma.$transaction(async (tx: any) => {
+      // create the main order record
       const pesanan = await tx.pesanan.create({
         data: {
-          jumlahOrang: parseInt(jumlahOrang.toString()),
-          idPelanggan: pelanggan.id,
-          noMeja: primaryMeja,
-          detailPesanan: {
-            create: detailPesanan.map((item: { idMenu: string; jumlahPesanan: number; subtotal: number }) => ({
-              idMenu: item.idMenu,
-              jumlahPesanan: parseInt(item.jumlahPesanan.toString()),
-              subtotal: parseFloat(item.subtotal.toString()),
-            })),
-          },
-        },
-        include: {
-          detailPesanan: true,
-        },
+          idPelanggan,
+          idPegawai,
+          noMeja,
+          jumlahOrang,
+          statusPesanan: 'MENUNGGU',
+          statusTagihan: 'UNPAID'
+        }
       });
 
-      for (const m of daftarMeja) {
-        await tx.meja.update({
-          where: { noMeja: parseInt(m.toString()) },
-          data: { status: 'OCCUPIED' },
-        });
+      // iterate through items to calculate subtotals and create order details
+      for (const item of items) {
+        const menu = await tx.menu.findUnique({ where: { id: item.idMenu } });
+        
+        if (menu) {
+          await tx.detailPesanan.create({
+            data: {
+              noNota: pesanan.noNota,
+              idMenu: item.idMenu,
+              jumlahPesanan: item.jumlahPesanan,
+              subtotal: menu.harga * item.jumlahPesanan
+            }
+          });
+        }
       }
+
+      // update table status to occupied
+      await tx.meja.update({
+        where: { noMeja },
+        data: { status: 'OCCUPIED' }
+      });
 
       return pesanan;
     });
 
-    return NextResponse.json({ sukses: true, data: pesananBaru }, { status: 201 });
+    return NextResponse.json({
+      sukses: true,
+      pesan: 'order successfully created.',
+      data: newOrder
+    });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Failed to create new order. Ensure table numbers are valid and unoccupied.' },
+      { sukses: false, pesan: 'failed to create order.' },
       { status: 500 }
     );
   }
 }
 
-// handle patch request to update order cooking status (used by chefs)
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
@@ -100,20 +99,25 @@ export async function PATCH(request: Request) {
 
     if (!noNota || !statusPesanan) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Receipt ID and order status are required.' },
+        { sukses: false, pesan: 'order id and status are required.' },
         { status: 400 }
       );
     }
 
-    const updatedPesanan = await prisma.pesanan.update({
+    // update the kitchen preparation status of the order
+    const updatedOrder = await prisma.pesanan.update({
       where: { noNota },
-      data: { statusPesanan },
+      data: { statusPesanan }
     });
 
-    return NextResponse.json({ sukses: true, data: updatedPesanan });
+    return NextResponse.json({
+      sukses: true,
+      pesan: 'order status updated successfully.',
+      data: updatedOrder
+    });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Failed to update order status.' },
+      { sukses: false, pesan: 'failed to update order status.' },
       { status: 500 }
     );
   }
