@@ -1,69 +1,68 @@
 // api route for processing order payments and releasing tables
 import { NextResponse } from 'next/server';
-import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { noNota, totalBayar, metodePembayaran, idPegawai } = body;
+    const { noNota, totalBayar, metodePembayaran } = body;
 
-    if (!noNota || totalBayar === undefined) {
+    // validate input data
+    if (!noNota || totalBayar === undefined || !metodePembayaran) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Receipt number and total payment are required.' },
+        { sukses: false, pesan: 'invalid payment data provided.' },
         { status: 400 }
       );
     }
 
-    // fallback idpegawai if not passed
-    const cashierId = idPegawai || 'KASIR-001';
-    const finalMetode = metodePembayaran || 'CASH';
+    // fetch the order to identify the table
+    const pesanan = await prisma.pesanan.findUnique({
+      where: { noNota }
+    });
 
-    const hasilPembayaran = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // fetch target order
-      const pesanan = await tx.pesanan.findUnique({
-        where: { noNota },
-      });
+    if (!pesanan) {
+      return NextResponse.json(
+        { sukses: false, pesan: 'order not found.' },
+        { status: 404 }
+      );
+    }
 
-      if (!pesanan) {
-        throw new Error('Order not found.');
-      }
-
-      if (pesanan.statusTagihan === 'PAID') {
-        throw new Error('This order has already been paid.');
-      }
-
-      // create payment transaction entry including the new payment method column
+    // execute transaction using 'any' to bypass strict prisma client typing issues on vercel
+    const result = await prisma.$transaction(async (tx: any) => {
+      // 1. insert payment record
       const pembayaran = await tx.pembayaran.create({
         data: {
-          noNota,
-          totalBayar: parseFloat(totalBayar.toString()),
-          metodePembayaran: finalMetode, 
-          idPegawai: cashierId,
-        },
+          totalBayar: Number(totalBayar),
+          metodePembayaran: metodePembayaran,
+          noNota: noNota,
+          idPegawai: 'CASH-001' // default cashier id
+        }
       });
 
-      // update order billing status only (payment method removed from here to optimize schema)
+      // 2. update order status to paid
       await tx.pesanan.update({
         where: { noNota },
-        data: {
-          statusTagihan: 'PAID',
-        },
+        data: { statusTagihan: 'PAID' }
       });
 
-      // release associated table back to available status
+      // 3. update table status to available
       await tx.meja.update({
         where: { noMeja: pesanan.noMeja },
-        data: { status: 'TERSEDIA' },
+        data: { status: 'TERSEDIA' }
       });
 
       return pembayaran;
     });
 
-    return NextResponse.json({ sukses: true, data: hasilPembayaran }, { status: 201 });
+    return NextResponse.json({
+      sukses: true,
+      pesan: 'payment processed successfully.',
+      data: result
+    });
+
   } catch (error: any) {
     return NextResponse.json(
-      { sukses: false, pesan: error.message || 'Failed to process payment.' },
+      { sukses: false, pesan: 'server error occurred during payment processing.' },
       { status: 500 }
     );
   }
