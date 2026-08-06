@@ -1,46 +1,91 @@
-// api route for transaction history and owner financial summary
+// laporan api route handling report generation and calculations
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // fetch completed transactions and unpaid receipts
     const riwayatTransaksi = await prisma.pesanan.findMany({
       include: {
-        pelanggan: true,
-        meja: true,
-        detailPesanan: {
-          include: {
-            menu: true,
-          },
-        },
-        pembayaran: true,
-      },
-      orderBy: {
-        tglPesanan: 'desc',
-      },
+        detailPesanan: true,
+      }
     });
 
-    // compute total earnings from paid orders
-    const totalPendapatan = riwayatTransaksi.reduce((acc, p) => {
+    // compute total earnings from paid orders with strict typescript typing
+    const totalPendapatan = riwayatTransaksi.reduce((acc: number, p: any) => {
       if (p.statusTagihan === 'PAID') {
-        const totalPesanan = p.detailPesanan.reduce((sum, d) => sum + d.subtotal, 0);
+        const totalPesanan = p.detailPesanan.reduce((sum: number, d: any) => sum + d.subtotal, 0);
         return acc + totalPesanan;
       }
       return acc;
     }, 0);
 
+    // fetch existing reports
+    const laporan = await prisma.laporan.findMany({
+      include: {
+        pegawai: {
+          select: { namaPegawai: true }
+        }
+      },
+      orderBy: { tglLaporan: 'desc' }
+    });
+
     return NextResponse.json({
       sukses: true,
-      data: {
-        totalPendapatan,
-        totalTransaksi: riwayatTransaksi.length,
-        riwayat: riwayatTransaksi,
-      },
+      kalkulasiSaatIni: totalPendapatan,
+      data: laporan
     });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Failed to fetch report history data.' },
+      { sukses: false, pesan: 'failed to fetch report data.' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { periode, idPegawai } = body;
+
+    if (!idPegawai) {
+      return NextResponse.json(
+        { sukses: false, pesan: 'employee id is required to generate a report.' },
+        { status: 400 }
+      );
+    }
+
+    const riwayatTransaksi = await prisma.pesanan.findMany({
+      include: {
+        detailPesanan: true,
+      }
+    });
+
+    // compute total earnings from paid orders with strict typescript typing
+    const totalPendapatan = riwayatTransaksi.reduce((acc: number, p: any) => {
+      if (p.statusTagihan === 'PAID') {
+        const totalPesanan = p.detailPesanan.reduce((sum: number, d: any) => sum + d.subtotal, 0);
+        return acc + totalPesanan;
+      }
+      return acc;
+    }, 0);
+
+    // generate new report record
+    const laporanBaru = await prisma.laporan.create({
+      data: {
+        periode: periode || 'harian',
+        totalPendapatan: totalPendapatan,
+        idPegawai: idPegawai,
+      }
+    });
+
+    return NextResponse.json({
+      sukses: true,
+      pesan: 'report successfully generated.',
+      data: laporanBaru
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { sukses: false, pesan: 'server error occurred while generating report.' },
       { status: 500 }
     );
   }
