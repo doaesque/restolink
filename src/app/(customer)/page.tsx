@@ -1,393 +1,232 @@
-// customer interface strictly matched with figma design, using dynamic database menu
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
+import { Utensils, Wine, ClipboardList, Plus, Minus, X } from 'lucide-react';
 
-interface MenuData {
+const MENU_ITEMS = {
+  FOOD: [
+    { id: 'f1', name: 'WAGYU A5 FILLET MIGNON WITH TRUFFLE SHAVINGS', price: 2000000, img: '/makanan_wagyu.png', shortName: 'Wagyu A5 Fillet' },
+    { id: 'f2', name: '45-DAY DRY-AGED T-BONE STEAK', price: 2800000, img: '/makanan_steak.png', shortName: '45-Day T-Bone' },
+    { id: 'f3', name: '24K GOLD LEAF TOMAHAWK RIBEYE', price: 5000000, img: '/makanan_ribeye.png', shortName: '24K Gold RibEye' },
+  ],
+  DRINKS: [
+    { id: 'd1', name: 'ARTESIAN CRYSTAL WATER', price: 120000, img: '/minuman_crystal_water.png', shortName: 'Artesian Water' },
+    { id: 'd2', name: 'TRUFFLE-INFUSED SMOKY OLD FASHIONED', price: 300000, img: '/minuman_bourbon.png', shortName: 'Smoky Old Fashioned' },
+    { id: 'd3', name: '24K GOLD DUST ESPRESSO MARTINI', price: 450000, img: '/minuman_martini.png', shortName: 'Espresso Martini' },
+  ]
+};
+
+interface CartItem {
   id: string;
-  namaMenu: string;
-  harga: number;
+  name: string;
+  price: number;
+  img: string;
+  qty: number;
 }
 
 export default function CustomerOrderPage() {
-  const [showWelcome, setShowWelcome] = useState(true);
-  const [menus, setMenus] = useState<MenuData[]>([]);
-  const [cart, setCart] = useState<{ id: string; qty: number }[]>([]);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showReceipt, setShowReceipt] = useState(false);
-  const [paymentType, setPaymentType] = useState<'CASH' | 'CASHLESS' | null>(null);
-  const [isOrdering, setIsOrdering] = useState(false);
+  const [category, setCategory] = useState<'FOOD' | 'DRINKS' | null>(null);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [modalState, setModalState] = useState<'NONE' | 'PROCEED_PAYMENT' | 'PAYMENT_METHOD'>('NONE');
 
-  // fetch menu from database
-  useEffect(() => {
-    async function fetchMenu() {
-      try {
-        const res = await fetch('/api/menu');
-        const data = await res.json();
-        if (data.sukses) {
-          setMenus(data.data);
-        }
-      } catch (err) {
-        console.error('failed to fetch menu:', err);
-      }
-    }
-    fetchMenu();
-  }, []);
-
-  // handle add to cart
-  const addToCart = (id: string, change: number) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item.id === id);
+  const handleAddToCart = (item: any) => {
+    setCart(prev => {
+      const existing = prev.find(p => p.id === item.id);
       if (existing) {
-        const newQty = existing.qty + change;
-        if (newQty <= 0) return prev.filter((item) => item.id !== id);
-        return prev.map((item) => (item.id === id ? { ...item, qty: newQty } : item));
+        return prev.map(p => p.id === item.id ? { ...p, qty: p.qty + 1 } : p);
       }
-      if (change > 0) return [...prev, { id, qty: 1 }];
-      return prev;
+      return [...prev, { ...item, qty: 1 }];
     });
   };
 
-  // calculate totals
-  const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
-  const totalPrice = cart.reduce((sum, item) => {
-    const menuItem = menus.find((m) => m.id === item.id);
-    return sum + (menuItem?.harga || 0) * item.qty;
-  }, 0);
-
-  // order checkout process saving to database
-  const handleOrder = async () => {
-    if (cart.length === 0) return;
-    setIsOrdering(true);
-
-    try {
-      // create payload to send to pesanan api
-      const payload = {
-        namaPelanggan: 'Table 10 Guest',
-        jumlahOrang: 2,
-        noMeja: 10,
-        detailPesanan: cart.map(item => {
-          const m = menus.find(x => x.id === item.id)!;
-          return {
-            idMenu: item.id,
-            jumlahPesanan: item.qty,
-            subtotal: m.harga * item.qty
-          };
-        })
-      };
-
-      const res = await fetch('/api/pesanan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await res.json();
-      if (result.sukses) {
-        setShowPaymentModal(true);
-      } else {
-        alert(result.pesan || 'Failed to process order.');
+  const handleRemoveFromCart = (id: string) => {
+    setCart(prev => {
+      const existing = prev.find(p => p.id === id);
+      if (existing && existing.qty > 1) {
+        return prev.map(p => p.id === id ? { ...p, qty: p.qty - 1 } : p);
       }
-    } catch (err) {
-      console.error('order submission error:', err);
-      alert('System error. Please try again.');
-    } finally {
-      setIsOrdering(false);
-    }
+      return prev.filter(p => p.id !== id);
+    });
   };
 
-  const handleSelectPayment = (type: 'CASH' | 'CASHLESS') => {
-    setPaymentType(type);
-    setShowPaymentModal(false);
-    setShowReceipt(true);
+  const totalItems = cart.reduce((acc, item) => acc + item.qty, 0);
+  const totalPrice = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+
+  const processOrder = (method: string) => {
+    alert(`order processed successfully via ${method}!`);
+    setCart([]);
+    setModalState('NONE');
+    setCategory(null);
   };
 
-  // ---------------------------------------------------------
-  // 1. welcome screen view (rendered without sidebar)
-  // ---------------------------------------------------------
-  if (showWelcome) {
-    return (
-      <div className="relative w-screen h-screen bg-black font-serif overflow-hidden flex items-center justify-center">
-        {/* background image with warm overlay matching figma */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/background.png"
-            alt="Restaurant Background"
-            fill
-            className="object-cover opacity-70"
-            priority
-          />
-          {/* warm orange/brown tint overlay for welcome screen */}
-          <div className="absolute inset-0 bg-[#A04000]/40 mix-blend-multiply"></div>
-        </div>
-
-        {/* centered welcome content without sidebar */}
-        <div className="relative z-10 flex flex-col items-center justify-center space-y-12">
-          <Image 
-            src="/logo.png" 
-            alt="RestoLink Logo" 
-            width={350} 
-            height={350} 
-            className="drop-shadow-2xl object-contain"
-            priority
-          />
-          {/* order button specifically positioned and styled like the figma mockup */}
-          <button 
-            onClick={() => setShowWelcome(false)}
-            className="bg-[#0A192F] border-[3px] border-[#D4AF37] text-[#D4AF37] px-20 py-4 rounded-xl text-3xl font-bold tracking-widest hover:bg-[#D4AF37] hover:text-[#0A192F] transition-all shadow-2xl"
-          >
-            ORDER
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ---------------------------------------------------------
-  // 2. main order menu view (with sidebar)
-  // ---------------------------------------------------------
   return (
-    <div className="relative w-screen h-screen bg-black font-serif overflow-hidden flex">
+    <div className="w-screen h-screen flex relative overflow-hidden bg-black font-sans">
       
-      {/* sidebar - solid navy blue */}
-      <aside className="w-[280px] bg-[#0A192F] border-r border-[#D4AF37]/30 flex flex-col pt-10 z-20 shadow-[15px_0_25px_rgba(0,0,0,0.7)] shrink-0">
-        <div className="flex justify-center mb-16 px-4">
-          <div className="bg-white/5 p-4 rounded-3xl shadow-inner">
-            <Image src="/logo.png" alt="RestoLink Logo" width={110} height={110} className="object-contain" priority />
-          </div>
-        </div>
+      {/* background image taking full space behind overlays */}
+      <div className="absolute inset-0 z-0">
+         <Image src="/background.png" alt="Restaurant Background" fill className="object-cover opacity-80" priority />
+      </div>
 
-        <nav className="flex flex-col w-full text-[#D4AF37]">
-          {/* food category */}
-          <div className="w-full">
-            <div className="py-5 px-8 border-y border-[#D4AF37]/30 text-xl font-bold uppercase tracking-widest flex items-center bg-[#D4AF37]/10 shadow-inner">
-              <span className="mr-4 text-2xl">🍽️</span> FOOD
-            </div>
-            <div className="flex flex-col space-y-6 mt-6 mb-8 px-12 text-sm text-[#D4AF37]/80 font-bold tracking-wider">
-              <span className="hover:text-[#D4AF37] hover:translate-x-1 cursor-pointer transition-all">Wagyu A5 Fillet</span>
-              <span className="hover:text-[#D4AF37] hover:translate-x-1 cursor-pointer transition-all">45-Day T-Bone</span>
-              <span className="hover:text-[#D4AF37] hover:translate-x-1 cursor-pointer transition-all">24K Gold RibEye</span>
-            </div>
-          </div>
-
-          {/* drinks category */}
-          <div className="w-full">
-            <div className="py-5 px-8 border-y border-[#D4AF37]/30 text-xl font-bold uppercase tracking-widest flex items-center hover:bg-[#D4AF37]/5 cursor-pointer transition-colors">
-              <span className="mr-4 text-2xl">🍸</span> DRINKS
-            </div>
-          </div>
-        </nav>
-      </aside>
-
-      {/* main content area (background + dark overlay to ensure readability) */}
-      <main className="flex-1 relative h-full flex">
-        {/* main background */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/background.png"
-            alt="Restaurant Background"
-            fill
-            className="object-cover"
-          />
-          {/* distinct dark overlay covering the entire middle section to ensure text readability */}
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-[3px]"></div>
-        </div>
-
-        {/* menu list section */}
-        <div className="flex-1 relative z-10 p-8 overflow-y-auto custom-scrollbar">
-          <div className="grid grid-cols-1 gap-6 max-w-4xl mx-auto pb-10">
-            {menus.map((menu) => (
-              <div 
-                key={menu.id} 
-                onClick={() => addToCart(menu.id, 1)}
-                className="bg-[#111111]/90 border border-[#D4AF37]/40 rounded-xl p-5 flex justify-between items-center shadow-2xl cursor-pointer hover:border-[#D4AF37] hover:bg-[#1A1A1A]/95 transition-all hover:scale-[1.02]"
-              >
-                 <div className="flex items-center space-x-6 w-full">
-                   {/* item image */}
-                   <div className="w-36 h-24 bg-[#1A1A1A] rounded-lg overflow-hidden border border-[#D4AF37]/30 flex items-center justify-center text-xs text-[#D4AF37]/40 shrink-0">
-                     IMG
-                   </div>
-                   {/* item details */}
-                   <div className="flex-1">
-                     <h3 className="text-[#D4AF37] text-lg font-bold tracking-widest uppercase mb-2 leading-snug">{menu.namaMenu}</h3>
-                     <p className="text-[#D4AF37]/80 text-base tracking-widest font-semibold">Rp. {menu.harga.toLocaleString('id-ID')}</p>
-                   </div>
-                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* cart right sidebar */}
-        <div className="w-[420px] relative z-10 bg-[#080808]/95 border-l border-[#D4AF37]/40 backdrop-blur-md flex flex-col shrink-0 shadow-[-15px_0_30px_rgba(0,0,0,0.6)]">
-          <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
-            {/* cart header */}
-            <div className="flex items-center justify-center space-x-4 mb-8 pb-5 border-b border-[#D4AF37]/40 text-[#D4AF37]">
-              <span className="text-3xl">📋</span>
-              <div>
-                <h2 className="text-2xl font-bold tracking-widest uppercase">Order Menu</h2>
-                <p className="text-sm opacity-80 mt-1 font-semibold tracking-wide">Table 10</p>
-              </div>
-            </div>
-
-            {/* cart items */}
-            <div className="space-y-4">
-              {cart.length === 0 ? (
-                <p className="text-base italic text-center text-[#D4AF37]/40 mt-20 tracking-wider">Please select a menu...</p>
-              ) : (
-                cart.map((cartItem) => {
-                  const menu = menus.find((m) => m.id === cartItem.id);
-                  if (!menu) return null;
-                  return (
-                    <div key={menu.id} className="bg-[#151515] border border-[#D4AF37]/30 rounded-xl p-4 flex justify-between items-center shadow-lg">
-                      <div className="flex items-center space-x-4 w-[65%]">
-                        <div className="w-16 h-12 bg-[#222222] rounded shrink-0 flex items-center justify-center text-[9px] text-[#D4AF37]/30">IMG</div>
-                        <div className="overflow-hidden">
-                          <h4 className="text-[12px] text-[#D4AF37] font-bold leading-snug uppercase truncate">{menu.namaMenu}</h4>
-                          <p className="text-[11px] text-[#D4AF37]/70 mt-1 font-semibold tracking-wider">Rp. {menu.harga.toLocaleString('id-ID')}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3 text-[#D4AF37]">
-                        <button onClick={() => addToCart(menu.id, -1)} className="w-7 h-7 border border-[#D4AF37]/60 rounded-md flex items-center justify-center hover:bg-[#D4AF37]/20 transition-colors font-bold">-</button>
-                        <span className="text-base font-bold w-5 text-center">{cartItem.qty}</span>
-                        <button onClick={() => addToCart(menu.id, 1)} className="w-7 h-7 border border-[#D4AF37]/60 rounded-md flex items-center justify-center hover:bg-[#D4AF37]/20 transition-colors font-bold">+</button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* checkout button area */}
-          <div className="p-8 bg-[#080808]">
-            <div className="bg-[#D4AF37] text-[#0A192F] p-6 rounded-2xl flex justify-between items-center shadow-[0_0_30px_rgba(212,175,55,0.2)]">
-               <div>
-                 <p className="text-sm font-bold tracking-widest">{totalItems} items</p>
-                 <p className="text-2xl font-bold tracking-widest mt-1">Rp. {totalPrice.toLocaleString('id-ID')}</p>
-               </div>
-               <button 
-                onClick={handleOrder}
-                disabled={cart.length === 0 || isOrdering}
-                className="bg-[#0A192F] text-[#D4AF37] px-8 py-4 rounded-xl text-xl font-bold tracking-widest hover:bg-black transition-colors disabled:opacity-50 shadow-lg"
-               >
-                 {isOrdering ? 'PROCESSING...' : 'ORDER'}
-               </button>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* ---------------------------------------------------------
-          3. payment method modal
-          --------------------------------------------------------- */}
-      {showPaymentModal && (
-        <div className="absolute inset-0 z-50 bg-black/80 flex items-center justify-center backdrop-blur-md">
-          <div className="bg-[#F3A150] text-[#0A192F] p-12 rounded-3xl w-[500px] relative shadow-2xl border-4 border-[#0A192F]/10">
-            <button 
-              onClick={() => setShowPaymentModal(false)}
-              className="absolute top-5 right-6 text-2xl font-bold text-[#0A192F] hover:scale-110 transition-transform bg-black/5 w-10 h-10 rounded-full flex items-center justify-center"
-            >
-              ✖
-            </button>
-            <h2 className="text-3xl font-bold text-center mb-10 font-serif tracking-wide">How would you like to pay?</h2>
-            <div className="flex flex-col space-y-6">
-              <button 
-                onClick={() => handleSelectPayment('CASH')}
-                className="bg-[#0A192F] text-[#F3A150] py-5 rounded-full font-bold tracking-widest text-2xl hover:opacity-90 shadow-xl border-2 border-[#0A192F] transition-opacity"
-              >
-                CASH
-              </button>
-              <button 
-                onClick={() => handleSelectPayment('CASHLESS')}
-                className="bg-[#0A192F] text-[#F3A150] py-5 rounded-full font-bold tracking-widest text-2xl hover:opacity-90 shadow-xl border-2 border-[#0A192F] transition-opacity"
-              >
-                CASHLESS
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* dark overlay when modal is open */}
+      {modalState !== 'NONE' && (
+         <div className="absolute inset-0 bg-black/70 z-40 transition-opacity"></div>
       )}
 
-      {/* ---------------------------------------------------------
-          4. receipt & qr modal
-          --------------------------------------------------------- */}
-      {showReceipt && (
-        <div className="absolute inset-0 z-50 bg-black/90 flex items-center justify-center backdrop-blur-md">
-          <div className={`flex items-center space-x-16 ${paymentType === 'CASHLESS' ? 'w-[950px] justify-between' : ''}`}>
-            
-            {/* receipt card */}
-            <div className="bg-[#F3A150] text-[#0A192F] p-10 rounded-2xl w-[450px] relative shadow-[0_0_50px_rgba(243,161,80,0.2)] border-2 border-[#0A192F]/20">
-               {/* stamp watermark for cash */}
-               {paymentType === 'CASH' && (
-                 <div className="absolute inset-0 flex items-center justify-center opacity-40 pointer-events-none rotate-[-15deg] z-0">
-                   <Image src="/cap_biru.png" alt="Done Stamp" width={300} height={300} />
-                 </div>
-               )}
+      {/* left sidebar */}
+      <div className="w-[280px] h-full bg-[#00215e] z-10 flex flex-col border-r border-[#ffc55a]/20 shadow-2xl shrink-0">
+        <div className="p-8 flex justify-center border-b border-[#ffc55a]/20">
+          <Image src="/logo_emas.png" alt="Logo" width={100} height={100} className="drop-shadow-lg" />
+        </div>
+        
+        <div className="flex-1 py-8 flex flex-col space-y-6">
+          
+          {/* food navigation */}
+          <div className="px-8">
+            <button 
+              onClick={() => setCategory('FOOD')} 
+              className={`flex items-center space-x-3 w-full text-left transition-colors ${category === 'FOOD' ? 'text-[#ffc55a]' : 'text-[#ffc55a]/50 hover:text-[#ffc55a]/80'}`}
+            >
+              <Utensils className="w-8 h-8 shrink-0" />
+              <span className="text-2xl font-serif tracking-widest uppercase">Food</span>
+            </button>
+            <div className={`mt-4 ml-11 flex flex-col space-y-4 overflow-hidden transition-all duration-300 ${category === 'FOOD' ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+              {MENU_ITEMS.FOOD.map(item => (
+                <span key={item.id} className="text-[#ffc55a]/70 text-sm font-serif tracking-wider hover:text-[#ffc55a] cursor-pointer" onClick={() => handleAddToCart(item)}>
+                  {item.shortName}
+                </span>
+              ))}
+            </div>
+          </div>
 
-               <div className="relative z-10 flex flex-col h-full">
-                 <div className="flex justify-center mb-8 bg-white/20 mx-24 rounded-3xl p-3 shadow-inner">
-                   <Image src="/logo.png" alt="logo" width={70} height={70} className="object-contain" />
-                 </div>
-                 
-                 <div className="flex justify-between text-sm font-bold mb-6 tracking-wider">
-                   <div className="space-y-1">
-                     <p>Table #10</p>
-                     <p>Date : 23 Nov 2026</p>
-                     <p>Serve : Cashier</p>
-                   </div>
-                   <div className="text-right flex items-end">
-                     <p className="text-3xl tracking-widest uppercase">{paymentType}</p>
-                   </div>
-                 </div>
+          {/* drinks navigation */}
+          <div className="px-8">
+            <button 
+              onClick={() => setCategory('DRINKS')} 
+              className={`flex items-center space-x-3 w-full text-left transition-colors ${category === 'DRINKS' ? 'text-[#ffc55a]' : 'text-[#ffc55a]/50 hover:text-[#ffc55a]/80'}`}
+            >
+              <Wine className="w-8 h-8 shrink-0" />
+              <span className="text-2xl font-serif tracking-widest uppercase">Drinks</span>
+            </button>
+            <div className={`mt-4 ml-11 flex flex-col space-y-4 overflow-hidden transition-all duration-300 ${category === 'DRINKS' ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+              {MENU_ITEMS.DRINKS.map(item => (
+                <span key={item.id} className="text-[#ffc55a]/70 text-sm font-serif tracking-wider hover:text-[#ffc55a] cursor-pointer" onClick={() => handleAddToCart(item)}>
+                  {item.shortName}
+                </span>
+              ))}
+            </div>
+          </div>
 
-                 <div className="border-t-[3px] border-b-[3px] border-[#0A192F] py-6 space-y-4 text-xs font-bold flex-1 tracking-wider custom-scrollbar overflow-y-auto max-h-[250px]">
-                    {cart.map(item => {
-                       const m = menus.find(x => x.id === item.id);
-                       if (!m) return null;
-                       return (
-                         <div key={item.id} className="flex justify-between items-center">
-                           <span className="w-2/3 pr-4 leading-relaxed">{item.qty} &nbsp; {m.namaMenu}</span>
-                           <span>Rp. {(m.harga * item.qty).toLocaleString('id-ID')}</span>
-                         </div>
-                       )
-                    })}
-                 </div>
+        </div>
+      </div>
 
-                 <div className="pt-6 text-sm font-bold space-y-2 w-4/5 ml-auto tracking-widest">
-                   <div className="flex justify-between"><span>Subtotal</span><span>Rp. {totalPrice.toLocaleString('id-ID')}</span></div>
-                   <div className="flex justify-between"><span>Tax (10%)</span><span>Rp. {(totalPrice * 0.1).toLocaleString('id-ID')}</span></div>
-                   <div className="flex justify-between"><span>Tip</span><span>Rp. 0</span></div>
-                   <div className="flex justify-between text-xl mt-3 border-t-[3px] border-[#0A192F] pt-3">
-                     <span>Total</span>
-                     <span>Rp. {(totalPrice * 1.1).toLocaleString('id-ID')}</span>
-                   </div>
-                 </div>
-
-                 <div className="mt-12 text-center text-sm font-bold tracking-wide">
-                   {paymentType === 'CASH' 
-                     ? <p className="leading-relaxed">Please proceed to the cashier to complete your payment and show your receipt.</p>
-                     : <p className="leading-relaxed">Scan the QR Code to complete payment.</p>
-                   }
-                   <p className="mt-6 text-xs italic opacity-80 tracking-widest">-Hope you Enjoy Your Dinner-</p>
-                 </div>
+      {/* middle menu content area */}
+      <div className="flex-1 relative z-10">
+         {/* center dark gradient overlay to make cards readable */}
+         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent pointer-events-none"></div>
+         
+         {category === null ? (
+            // idle state large logo
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+               <div className="w-[400px] h-[400px] opacity-80">
+                  <Image src="/logo_emas.png" alt="Big Logo" width={400} height={400} className="object-contain drop-shadow-[0_0_50px_rgba(255,197,90,0.3)]" />
                </div>
             </div>
+         ) : (
+            // active menu list
+            <div className="absolute left-8 top-12 bottom-12 w-[480px] overflow-y-auto space-y-5 pr-4 scrollbar-hide">
+               {MENU_ITEMS[category].map(item => (
+                 <div 
+                   key={item.id} 
+                   onClick={() => handleAddToCart(item)}
+                   className="bg-[#18181b]/90 border border-gray-700/50 p-3 rounded-xl flex items-center space-x-5 cursor-pointer hover:border-[#ffc55a]/50 hover:bg-[#27272a]/90 transition-all shadow-xl"
+                 >
+                    <Image src={item.img} alt={item.name} width={130} height={80} className="rounded-lg object-cover h-[80px] bg-black shrink-0" />
+                    <div className="flex-1 py-1">
+                      <h4 className="text-[#ffc55a] font-serif text-sm tracking-widest uppercase leading-snug">{item.name}</h4>
+                      <p className="text-[#ffc55a]/70 font-serif text-sm mt-2 tracking-wider">Rp. {item.price.toLocaleString('id-ID')}</p>
+                    </div>
+                 </div>
+               ))}
+            </div>
+         )}
+      </div>
 
-            {/* qr code section (only for cashless) */}
-            {paymentType === 'CASHLESS' && (
-              <div className="text-[#F3A150] flex flex-col items-center">
-                <h2 className="text-5xl font-serif tracking-widest mb-10 text-center leading-snug drop-shadow-lg">
-                  Finish Your<br/>Payment Here
-                </h2>
-                <div className="bg-[#F3A150] p-6 rounded-2xl shadow-[0_0_60px_rgba(243,161,80,0.5)] border-4 border-[#F3A150]/50">
-                  <Image src="/qr_code.png" alt="QR Code" width={320} height={320} className="rounded-xl" />
-                </div>
-              </div>
+      {/* right cart sidebar */}
+      <div className="w-[400px] h-full z-10 flex flex-col pt-10 pb-8 px-8 shrink-0 border-l border-white/10 bg-black/20 backdrop-blur-sm">
+         
+         <div className="flex items-center space-x-4 mb-8 border-b border-[#ffc55a]/30 pb-4">
+           <ClipboardList className="w-10 h-10 text-[#ffc55a]" />
+           <div>
+              <h3 className="text-[#ffc55a] text-3xl font-serif font-bold tracking-widest">Order Menu</h3>
+              <p className="text-gray-400 text-sm font-serif tracking-wider">Table 10</p>
+           </div>
+         </div>
+
+         <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-hide">
+            {cart.length === 0 ? (
+               <div className="h-full flex items-center justify-center">
+                  <p className="text-[#ffc55a]/50 font-serif text-lg tracking-widest italic">Silahkan Pilih Menu...</p>
+               </div>
+            ) : (
+               cart.map(item => (
+                 <div key={item.id} className="bg-[#18181b]/90 border border-gray-700/50 p-3 rounded-xl flex items-center space-x-4 shadow-lg">
+                    <Image src={item.img} alt={item.name} width={90} height={60} className="rounded-md object-cover h-[60px] bg-black shrink-0" />
+                    <div className="flex-1">
+                       <h4 className="text-[#ffc55a] font-serif text-[10px] uppercase leading-tight tracking-wider">{item.name}</h4>
+                       <p className="text-[#ffc55a]/70 font-serif text-xs mt-1 tracking-wider">Rp. {(item.price * item.qty).toLocaleString('id-ID')}</p>
+                    </div>
+                    <div className="flex items-center space-x-3 bg-black/50 rounded-lg p-1.5 border border-gray-700">
+                       <button onClick={() => handleRemoveFromCart(item.id)} className="text-[#ffc55a] p-1 hover:bg-white/10 rounded"><Minus className="w-3 h-3"/></button>
+                       <span className="text-gray-300 text-xs font-bold w-3 text-center">{item.qty}</span>
+                       <button onClick={() => handleAddToCart(item)} className="text-[#ffc55a] p-1 hover:bg-white/10 rounded"><Plus className="w-3 h-3"/></button>
+                    </div>
+                 </div>
+               ))
             )}
-          </div>
-        </div>
+         </div>
+
+         {/* cart footer */}
+         <div className="bg-[#cca762] rounded-3xl p-6 flex justify-between items-center mt-6 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+            <div className="flex flex-col justify-center">
+               <p className="text-[#1a1a1a] font-serif text-sm tracking-wider font-bold mb-1">{totalItems} items</p>
+               <p className="text-[#1a1a1a] font-serif font-extrabold text-2xl tracking-widest">Rp. {totalPrice.toLocaleString('id-ID')}</p>
+            </div>
+            <button 
+               onClick={() => setModalState('PROCEED_PAYMENT')} 
+               disabled={totalItems === 0} 
+               className="bg-[#1a1a1a] text-[#cca762] px-8 py-4 rounded-2xl font-serif font-bold text-2xl tracking-widest hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-xl"
+            >
+               Order
+            </button>
+         </div>
+      </div>
+
+      {/* dynamic modals */}
+      {modalState === 'PROCEED_PAYMENT' && (
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#ffb74d] rounded-2xl w-[450px] p-10 z-50 shadow-2xl flex flex-col items-center">
+            <button onClick={() => setModalState('NONE')} className="absolute top-3 right-3 text-white bg-[#1a1a1a] rounded-full p-1.5 hover:scale-110 transition-transform">
+               <X className="w-5 h-5"/>
+            </button>
+            <h2 className="text-[#1a1a1a] font-serif font-extrabold text-4xl mb-10 tracking-wide text-center mt-4">Proceed to payment</h2>
+            <div className="w-full flex flex-col space-y-5">
+               <button onClick={() => setModalState('PAYMENT_METHOD')} className="w-full bg-[#1a1a1a] text-[#ffb74d] py-5 rounded-2xl font-serif font-bold text-2xl tracking-widest hover:bg-black transition-colors shadow-lg">PAY NOW</button>
+               <button onClick={() => processOrder('PAY LATER')} className="w-full bg-[#1a1a1a] text-[#ffb74d] py-5 rounded-2xl font-serif font-bold text-2xl tracking-widest hover:bg-black transition-colors shadow-lg">PAY LATER</button>
+            </div>
+         </div>
+      )}
+
+      {modalState === 'PAYMENT_METHOD' && (
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#ffb74d] rounded-2xl w-[450px] p-10 z-50 shadow-2xl flex flex-col items-center">
+            <button onClick={() => setModalState('NONE')} className="absolute top-3 right-3 text-white bg-[#1a1a1a] rounded-full p-1.5 hover:scale-110 transition-transform">
+               <X className="w-5 h-5"/>
+            </button>
+            <h2 className="text-[#1a1a1a] font-serif font-extrabold text-4xl mb-10 tracking-wide text-center mt-4 leading-tight">How would you like to pay?</h2>
+            <div className="w-full flex flex-col space-y-5">
+               <button onClick={() => processOrder('CASH')} className="w-full bg-[#1a1a1a] text-[#ffb74d] py-5 rounded-2xl font-serif font-bold text-2xl tracking-widest hover:bg-black transition-colors shadow-lg">CASH</button>
+               <button onClick={() => processOrder('CASHLESS')} className="w-full bg-[#1a1a1a] text-[#ffb74d] py-5 rounded-2xl font-serif font-bold text-2xl tracking-widest hover:bg-black transition-colors shadow-lg">CASHLESS</button>
+            </div>
+         </div>
       )}
 
     </div>
