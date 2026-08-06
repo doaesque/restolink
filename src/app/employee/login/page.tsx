@@ -1,4 +1,3 @@
-// employee login page with beautiful custom color palette
 'use client';
 
 import Image from 'next/image';
@@ -44,42 +43,47 @@ export default function EmployeeLoginPage() {
     }
   }
 
+  // enforce numeric input for pin
+  const handlePinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const numericValue = e.target.value.replace(/\D/g, '');
+    setPin(numericValue);
+  };
+
   return (
     <div className="w-screen h-screen bg-[#00215e] flex items-center justify-center relative overflow-hidden font-sans">
       {/* decorative background shapes using the palette */}
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#2c4e80] rounded-full mix-blend-screen filter blur-[80px] opacity-60 animate-pulse"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-[#fc4100] rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse delay-1000"></div>
 
-      <div className="flex flex-col items-center space-y-8 z-10 w-full max-w-[450px]">
-        {/* logo and title */}
-        <div className="flex flex-col items-center">
-          <div className="bg-[#ffc55a] p-4 rounded-3xl shadow-[0_0_40px_rgba(255,197,90,0.4)] mb-6 transform hover:scale-105 transition-transform duration-300">
-            <Image
-              src="/logo.png"
-              alt="RestoLink Logo"
-              width={100}
-              height={100}
-              className="object-contain"
-              priority
-            />
-          </div>
-          <h1 className="text-5xl font-extrabold text-white tracking-widest drop-shadow-lg">
+      <div className="flex flex-col items-center z-10 w-full max-w-[380px] px-4">
+        
+        {/* elegant logo and title representation */}
+        <div className="flex flex-col items-center mb-8">
+          <Image
+            src="/logo_emas.png"
+            alt="RestoLink Logo"
+            width={120}
+            height={120}
+            className="object-contain drop-shadow-xl"
+            priority
+          />
+          <h1 className="text-4xl font-extrabold text-white tracking-widest mt-4 drop-shadow-md">
             RESTO<span className="text-[#ffc55a]">LINK</span>
           </h1>
-          <p className="text-[#2c4e80] text-lg font-bold tracking-widest mt-2 uppercase bg-white px-4 py-1 rounded-full shadow-md">
+          <p className="bg-[#2c4e80] text-white text-xs font-bold tracking-[0.2em] mt-3 px-5 py-1.5 rounded-full shadow-md uppercase">
             Staff Portal
           </p>
         </div>
 
-        {/* modern login card */}
-        <div className="bg-[#2c4e80]/80 backdrop-blur-xl border border-[#ffc55a]/30 w-full px-10 py-12 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col items-center space-y-6">
+        {/* compact and clean login card */}
+        <div className="bg-[#2c4e80] w-full p-8 rounded-3xl shadow-2xl flex flex-col items-center border border-[#ffc55a]/10">
           {pesanError && (
-            <div className="w-full p-4 bg-[#fc4100]/20 border border-[#fc4100] text-[#ffc55a] text-sm rounded-xl text-center font-bold tracking-wide">
-              ⚠ {pesanError}
+            <div className="w-full mb-6 p-3 bg-[#fc4100] text-white text-sm rounded-xl text-center font-bold tracking-wide shadow-md">
+              {pesanError}
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="w-full space-y-6 flex flex-col items-center">
+          <form onSubmit={handleLogin} className="w-full space-y-5 flex flex-col items-center">
             <div className="w-full relative group">
               <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[#2c4e80] text-xl transition-colors group-focus-within:text-[#fc4100]">👤</span>
               <input
@@ -88,7 +92,7 @@ export default function EmployeeLoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="w-full bg-white text-[#00215e] pl-14 pr-6 py-4 rounded-2xl text-lg font-bold placeholder-[#2c4e80]/50 focus:outline-none focus:ring-4 focus:ring-[#fc4100]/50 shadow-inner transition-all"
+                className="w-full bg-white text-[#00215e] pl-14 pr-6 py-3.5 rounded-xl text-base font-bold placeholder-[#2c4e80]/60 focus:outline-none focus:ring-4 focus:ring-[#ffc55a] shadow-inner transition-all"
               />
             </div>
 
@@ -96,20 +100,23 @@ export default function EmployeeLoginPage() {
               <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[#2c4e80] text-xl transition-colors group-focus-within:text-[#fc4100]">🔒</span>
               <input
                 type="password"
-                placeholder="Secret PIN"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                placeholder="•• •• ••"
                 value={pin}
-                onChange={(e) => setPin(e.target.value)}
+                onChange={handlePinChange}
                 required
-                className="w-full bg-white text-[#00215e] pl-14 pr-6 py-4 rounded-2xl text-lg font-bold placeholder-[#2c4e80]/50 focus:outline-none focus:ring-4 focus:ring-[#fc4100]/50 shadow-inner transition-all tracking-[0.3em]"
+                className="w-full bg-white text-[#00215e] pl-14 pr-6 py-3.5 rounded-xl text-center text-xl font-bold placeholder-[#2c4e80]/60 focus:outline-none focus:ring-4 focus:ring-[#ffc55a] shadow-inner transition-all tracking-[0.5em]"
               />
             </div>
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-[#fc4100] to-[#e63a00] hover:from-[#ffc55a] hover:to-[#f5b338] text-white hover:text-[#00215e] px-8 py-4 rounded-2xl text-2xl font-extrabold shadow-[0_10px_30px_rgba(252,65,0,0.4)] transition-all duration-300 disabled:opacity-50 mt-6 tracking-widest hover:scale-[1.02] uppercase"
+              disabled={loading || pin.length < 4}
+              className="w-full bg-[#fc4100] hover:bg-[#ffc55a] text-white hover:text-[#00215e] px-6 py-3.5 rounded-xl text-lg font-extrabold shadow-lg transition-colors duration-200 disabled:opacity-50 mt-4 tracking-widest uppercase"
             >
-              {loading ? 'Authenticating...' : 'Sign In'}
+              {loading ? 'WAIT...' : 'SIGN IN'}
             </button>
           </form>
         </div>
