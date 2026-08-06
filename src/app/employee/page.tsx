@@ -1,10 +1,10 @@
-// main owner portal using lucide icons
+// main owner portal with unified login-style aesthetics
 'use client';
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { UserRoundCog, ChefHat, Users, Home, ChevronLeft } from 'lucide-react';
+import { UserRoundCog, ChefHat, Users, Home, ChevronLeft, LogOut } from 'lucide-react';
 
 interface Pegawai {
   id: string;
@@ -57,27 +57,38 @@ export default function EmployeePortalPage() {
   // ---------------------------------------------------------
   if (view === 'welcome') {
     return (
-      <div className="w-screen h-screen bg-[#00215e] flex flex-col items-center justify-center relative font-sans">
+      <div className="w-screen h-screen bg-gradient-to-br from-[#00215e] to-[#2c4e80] flex items-center justify-center font-sans relative">
         <div className="absolute top-6 right-6">
-           <button onClick={handleLogout} className="bg-[#fc4100] px-5 py-2 rounded-xl font-extrabold hover:opacity-90 text-white shadow-lg tracking-wider">Logout</button>
+           <button onClick={handleLogout} className="bg-[#fc4100] px-5 py-2.5 rounded-xl font-extrabold hover:bg-[#ffc55a] hover:text-[#00215e] transition-colors text-white shadow-md tracking-wider flex items-center">
+             <LogOut className="w-5 h-5 mr-2" /> Logout
+           </button>
         </div>
-        <Image src="/logo_emas.png" alt="Logo" width={150} height={150} className="drop-shadow-xl" />
-        <h1 className="text-6xl font-bold mt-8 tracking-wide text-white">Welcome...</h1>
-        <h2 className="text-3xl font-bold mt-3 tracking-widest text-white">-Boss-</h2>
-        
-        <div className="bg-[#2c4e80] p-10 mt-12 rounded-3xl shadow-2xl flex space-x-8">
-          <button onClick={() => router.push('/employee/kasir')} className="bg-white text-[#00215e] p-6 rounded-2xl flex flex-col items-center w-40 h-40 justify-center shadow-xl hover:bg-[#ffc55a] transition-all hover:scale-105">
-            <UserRoundCog className="w-16 h-16 mb-3" />
-            <span className="font-extrabold text-xl">Cashier</span>
-          </button>
-          <button onClick={() => router.push('/employee/koki')} className="bg-white text-[#00215e] p-6 rounded-2xl flex flex-col items-center w-40 h-40 justify-center shadow-xl hover:bg-[#ffc55a] transition-all hover:scale-105">
-            <ChefHat className="w-16 h-16 mb-3" />
-            <span className="font-extrabold text-xl">Chef</span>
-          </button>
-          <button onClick={() => setView('monitoring')} className="bg-white text-[#00215e] p-6 rounded-2xl flex flex-col items-center w-40 h-40 justify-center shadow-xl hover:bg-[#ffc55a] transition-all hover:scale-105">
-            <Users className="w-16 h-16 mb-3" />
-            <span className="font-extrabold text-xl">Staff</span>
-          </button>
+
+        <div className="flex flex-col items-center w-full max-w-[700px] px-4">
+          <div className="flex flex-col items-center mb-8">
+            <Image src="/logo_emas.png" alt="RestoLink Logo" width={110} height={110} className="object-contain drop-shadow-lg mb-2" priority />
+            <h1 className="text-4xl font-extrabold text-white tracking-wider mt-2 drop-shadow-md">
+              RESTO<span className="text-[#ffc55a]">LINK</span>
+            </h1>
+            <div className="bg-[#2c4e80] text-white text-xs font-bold tracking-widest mt-3 px-6 py-1.5 rounded-full shadow-md uppercase">
+              Boss Portal
+            </div>
+          </div>
+
+          <div className="bg-[#2c4e80] w-full p-10 rounded-2xl shadow-2xl flex justify-center space-x-8 border border-[#ffc55a]/10">
+            <button onClick={() => router.push('/employee/kasir')} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <UserRoundCog className="w-14 h-14 mb-3" />
+              <span className="font-extrabold text-lg">Cashier</span>
+            </button>
+            <button onClick={() => router.push('/employee/koki')} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <ChefHat className="w-14 h-14 mb-3" />
+              <span className="font-extrabold text-lg">Chef</span>
+            </button>
+            <button onClick={() => setView('monitoring')} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <Users className="w-14 h-14 mb-3" />
+              <span className="font-extrabold text-lg">Staff</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -88,26 +99,38 @@ export default function EmployeePortalPage() {
   // ---------------------------------------------------------
   if (view === 'monitoring') {
     return (
-      <div className="w-screen h-screen bg-[#00215e] flex flex-col items-center pt-20 relative font-sans">
-        <button onClick={() => setView('welcome')} className="absolute top-8 left-8 text-white font-extrabold text-xl flex items-center hover:text-[#ffc55a] transition-colors">
-           <ChevronLeft className="w-6 h-6 mr-1" /> Back
-        </button>
-        <Image src="/logo_emas.png" alt="Logo" width={120} height={120} className="drop-shadow-xl" />
-        <h1 className="text-5xl font-bold mt-8 tracking-wide mb-12 text-white">Time to Monitoring...</h1>
-        
-        <div className="bg-[#2c4e80] p-10 rounded-3xl shadow-2xl flex space-x-8">
-          <button onClick={() => setView('staff_KASIR')} className="bg-white text-[#00215e] p-6 rounded-2xl flex flex-col items-center w-40 h-40 justify-center shadow-xl hover:bg-[#ffc55a] transition-colors">
-            <UserRoundCog className="w-16 h-16 mb-3" />
-            <span className="font-extrabold text-xl">Cashier</span>
-          </button>
-          <button onClick={() => setView('staff_KOKI')} className="bg-white text-[#00215e] p-6 rounded-2xl flex flex-col items-center w-40 h-40 justify-center shadow-xl hover:bg-[#ffc55a] transition-colors">
-            <ChefHat className="w-16 h-16 mb-3" />
-            <span className="font-extrabold text-xl">Chef</span>
-          </button>
-          <button onClick={() => setView('staff_PELAYAN')} className="bg-white text-[#00215e] p-6 rounded-2xl flex flex-col items-center w-40 h-40 justify-center shadow-xl hover:bg-[#ffc55a] transition-colors">
-            <Users className="w-16 h-16 mb-3" />
-            <span className="font-extrabold text-xl">Waiter</span>
-          </button>
+      <div className="w-screen h-screen bg-gradient-to-br from-[#00215e] to-[#2c4e80] flex items-center justify-center font-sans relative">
+        <div className="absolute top-6 left-6">
+           <button onClick={() => setView('welcome')} className="text-white font-extrabold text-lg flex items-center hover:text-[#ffc55a] transition-colors">
+             <ChevronLeft className="w-6 h-6 mr-1" /> Back
+           </button>
+        </div>
+
+        <div className="flex flex-col items-center w-full max-w-[700px] px-4">
+          <div className="flex flex-col items-center mb-8">
+            <Image src="/logo_emas.png" alt="RestoLink Logo" width={110} height={110} className="object-contain drop-shadow-lg mb-2" priority />
+            <h1 className="text-4xl font-extrabold text-white tracking-wider mt-2 drop-shadow-md">
+              RESTO<span className="text-[#ffc55a]">LINK</span>
+            </h1>
+            <div className="bg-[#2c4e80] text-white text-xs font-bold tracking-widest mt-3 px-6 py-1.5 rounded-full shadow-md uppercase">
+              Staff Monitoring
+            </div>
+          </div>
+
+          <div className="bg-[#2c4e80] w-full p-10 rounded-2xl shadow-2xl flex justify-center space-x-8 border border-[#ffc55a]/10">
+            <button onClick={() => setView('staff_KASIR')} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <UserRoundCog className="w-14 h-14 mb-3" />
+              <span className="font-extrabold text-lg">Cashier</span>
+            </button>
+            <button onClick={() => setView('staff_KOKI')} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <ChefHat className="w-14 h-14 mb-3" />
+              <span className="font-extrabold text-lg">Chef</span>
+            </button>
+            <button onClick={() => setView('staff_PELAYAN')} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <Users className="w-14 h-14 mb-3" />
+              <span className="font-extrabold text-lg">Waiter</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -122,7 +145,6 @@ export default function EmployeePortalPage() {
 
     return (
       <div className="w-screen h-screen flex bg-[#00215e] font-sans">
-        {/* sidebar */}
         <div className="w-[280px] bg-[#00215e] flex flex-col items-center py-10 shrink-0">
           <Image src="/logo_emas.png" alt="Logo" width={90} height={90} />
           <h2 className="text-white font-extrabold text-4xl mt-6 mb-12 tracking-wide">Staff</h2>
@@ -153,7 +175,6 @@ export default function EmployeePortalPage() {
           </div>
         </div>
 
-        {/* main table content */}
         <div className="flex-1 bg-[#2c4e80] p-10 rounded-tl-[40px] shadow-[inset_10px_10px_20px_rgba(0,0,0,0.4)] flex flex-col">
           <div className="flex-1 overflow-y-auto pr-4">
             <div className="grid grid-cols-3 gap-4 mb-4">

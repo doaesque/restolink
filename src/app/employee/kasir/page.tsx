@@ -29,7 +29,6 @@ export default function KasirPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedOrder, setSelectedOrder] = useState<Pesanan | null>(null);
 
-  // states for payment processing
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QRIS'>('CASH');
   const [moneyReceived, setMoneyReceived] = useState<string>('');
   const [tip, setTip] = useState<string>('');
@@ -38,7 +37,6 @@ export default function KasirPage() {
     if (view !== 'welcome') fetchOrders();
   }, [view]);
 
-  // reset form when order changes
   useEffect(() => {
     setMoneyReceived('');
     setTip('0');
@@ -52,7 +50,7 @@ export default function KasirPage() {
       const data = await res.json();
       if (data.sukses) setListPesanan(data.data);
     } catch (err) {
-      console.error('Failed to fetch billing orders:', err);
+      console.error('failed to fetch billing orders:', err);
     } finally {
       setLoading(false);
     }
@@ -91,11 +89,11 @@ export default function KasirPage() {
         setSelectedOrder(null); 
         fetchOrders();
       } else {
-        alert(responseData.pesan || 'Failed to process payment.');
+        alert(responseData.pesan || 'failed to process payment.');
       }
     } catch (err) {
-      console.error('Payment Error:', err);
-      alert('A system error occurred while processing the payment.');
+      console.error('payment error:', err);
+      alert('a system error occurred while processing the payment.');
     }
   }
 
@@ -109,24 +107,30 @@ export default function KasirPage() {
   // ---------------------------------------------------------
   if (view === 'welcome') {
     return (
-      <div className="w-screen h-screen bg-[#00215e] flex flex-col items-center justify-center relative font-sans">
+      <div className="w-screen h-screen bg-gradient-to-br from-[#00215e] to-[#2c4e80] flex items-center justify-center font-sans relative">
         <div className="absolute top-6 right-6">
-           <button onClick={handleLogout} className="bg-[#fc4100] px-6 py-2.5 rounded-xl font-extrabold hover:bg-[#e63a00] transition-colors text-white shadow-lg tracking-wider flex items-center">
+           <button onClick={handleLogout} className="bg-[#fc4100] px-5 py-2.5 rounded-xl font-extrabold hover:bg-[#ffc55a] hover:text-[#00215e] transition-colors text-white shadow-md tracking-wider flex items-center">
              <LogOut className="w-5 h-5 mr-2" /> Logout
            </button>
         </div>
-        <Image src="/logo_emas.png" alt="Logo" width={160} height={160} className="drop-shadow-xl" />
-        <h1 className="text-6xl font-bold mt-8 tracking-wide text-white">Welcome...</h1>
-        <h2 className="text-3xl font-bold mt-3 tracking-widest text-[#ffc55a]">-Cashier-</h2>
-        
-        <div className="mt-14">
-          <button 
-            onClick={() => setView('dashboard')} 
-            className="bg-white text-[#00215e] px-10 py-6 rounded-2xl flex items-center justify-center shadow-2xl hover:bg-[#ffc55a] transition-all hover:scale-105 group"
-          >
-            <LayoutDashboard className="w-10 h-10 mr-4 text-[#fc4100] group-hover:text-[#00215e] transition-colors" />
-            <span className="font-extrabold text-3xl tracking-wide uppercase">Open Dashboard</span>
-          </button>
+
+        <div className="flex flex-col items-center w-full max-w-[500px] px-4">
+          <div className="flex flex-col items-center mb-8">
+            <Image src="/logo_emas.png" alt="RestoLink Logo" width={110} height={110} className="object-contain drop-shadow-lg mb-2" priority />
+            <h1 className="text-4xl font-extrabold text-white tracking-wider mt-2 drop-shadow-md">
+              RESTO<span className="text-[#ffc55a]">LINK</span>
+            </h1>
+            <div className="bg-[#2c4e80] text-white text-xs font-bold tracking-widest mt-3 px-6 py-1.5 rounded-full shadow-md uppercase">
+              Cashier Portal
+            </div>
+          </div>
+
+          <div className="bg-[#2c4e80] w-full p-10 rounded-2xl shadow-2xl flex justify-center border border-[#ffc55a]/10">
+            <button onClick={() => setView('dashboard')} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-48 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <LayoutDashboard className="w-14 h-14 mb-3" />
+              <span className="font-extrabold text-lg text-center leading-tight">Open<br/>Dashboard</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -151,7 +155,6 @@ export default function KasirPage() {
 
     return (
       <div className="w-screen h-screen flex bg-[#00215e] font-sans">
-        {/* sidebar */}
         <div className="w-[280px] bg-[#00215e] flex flex-col items-center py-10 shrink-0 border-r border-[#2c4e80]">
           <Image src="/logo_emas.png" alt="Logo" width={100} height={100} />
           <h2 className="text-white font-extrabold text-4xl mt-6 mb-12 tracking-wider">Cashier</h2>
@@ -170,9 +173,7 @@ export default function KasirPage() {
           </div>
         </div>
 
-        {/* main content area */}
         <div className="flex-1 bg-[#2c4e80] p-10 rounded-tl-[40px] shadow-[inset_10px_10px_20px_rgba(0,0,0,0.4)] flex flex-col relative">
-          
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-white text-3xl font-extrabold tracking-wide">Order Processing</h3>
             <button onClick={() => setSelectedOrder(null)} className="text-white bg-[#00215e] px-6 py-2 rounded-lg font-bold hover:text-[#ffc55a] transition-colors shadow-md">
@@ -181,8 +182,7 @@ export default function KasirPage() {
           </div>
 
           <div className="flex flex-1 space-x-10 h-full pb-8">
-             {/* receipt box */}
-             <div className="flex-1 bg-[#ffc55a] p-10 rounded-2xl relative shadow-2xl text-[#00215e] font-serif flex flex-col overflow-hidden">
+             <div className={`flex-1 bg-[#ffc55a] p-10 rounded-2xl relative shadow-2xl text-[#00215e] font-serif flex flex-col overflow-hidden`}>
                 {isPaid && (
                    <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none -rotate-12 z-0">
                      <Image src="/cap_biru.png" alt="Done Stamp" width={400} height={400} />
@@ -233,10 +233,7 @@ export default function KasirPage() {
                 </div>
              </div>
 
-             {/* dynamic payment panel */}
              <div className="w-[450px] flex flex-col h-full bg-white rounded-2xl shadow-2xl p-8">
-                
-                {/* payment method toggle */}
                 <div className="mb-8">
                   <label className="text-[#00215e] font-extrabold text-lg mb-3 block uppercase tracking-wider">Payment Method</label>
                   <div className="flex space-x-4">
@@ -257,7 +254,6 @@ export default function KasirPage() {
                   </div>
                 </div>
 
-                {/* conditional inputs based on selected method */}
                 <div className="flex-1 space-y-6">
                   {paymentMethod === 'CASH' ? (
                      <>
@@ -309,7 +305,6 @@ export default function KasirPage() {
                       {isPaid ? 'Payment Complete' : 'Process Payment'}
                    </button>
                 </div>
-
              </div>
           </div>
         </div>

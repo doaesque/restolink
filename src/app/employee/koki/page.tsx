@@ -1,10 +1,10 @@
-// chef module interface using lucide icons
+// chef module interface
 'use client';
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ConciergeBell, Package, Home, Check, X } from 'lucide-react';
+import { ConciergeBell, Package, Home, Check, X, LogOut } from 'lucide-react';
 
 interface DetailPesanan {
   idDetail: string;
@@ -104,23 +104,34 @@ export default function KokiPage() {
   // ---------------------------------------------------------
   if (view === 'welcome') {
     return (
-      <div className="w-screen h-screen bg-[#00215e] flex flex-col items-center justify-center relative font-sans">
+      <div className="w-screen h-screen bg-gradient-to-br from-[#00215e] to-[#2c4e80] flex items-center justify-center font-sans relative">
         <div className="absolute top-6 right-6">
-           <button onClick={handleLogout} className="bg-[#fc4100] px-5 py-2 rounded-xl font-extrabold hover:opacity-90 text-white shadow-lg tracking-wider">Logout</button>
+           <button onClick={handleLogout} className="bg-[#fc4100] px-5 py-2.5 rounded-xl font-extrabold hover:bg-[#ffc55a] hover:text-[#00215e] transition-colors text-white shadow-md tracking-wider flex items-center">
+             <LogOut className="w-5 h-5 mr-2" /> Logout
+           </button>
         </div>
-        <Image src="/logo_emas.png" alt="Logo" width={150} height={150} className="drop-shadow-xl" />
-        <h1 className="text-6xl font-bold mt-8 tracking-wide text-white">Welcome...</h1>
-        <h2 className="text-3xl font-bold mt-3 tracking-widest text-white">-Chef-</h2>
-        
-        <div className="bg-[#2c4e80] p-10 mt-12 rounded-3xl shadow-2xl flex space-x-8">
-          <button onClick={() => setView('orders')} className="bg-white text-[#00215e] p-6 rounded-2xl flex flex-col items-center w-48 h-40 justify-center shadow-xl hover:bg-[#ffc55a] transition-all hover:scale-105">
-            <ConciergeBell className="w-16 h-16 mb-3" />
-            <span className="font-extrabold text-xl text-center leading-tight">Incoming Order</span>
-          </button>
-          <button onClick={() => setView('inventory')} className="bg-white text-[#00215e] p-6 rounded-2xl flex flex-col items-center w-48 h-40 justify-center shadow-xl hover:bg-[#ffc55a] transition-all hover:scale-105">
-            <Package className="w-16 h-16 mb-3" />
-            <span className="font-extrabold text-xl">Inventory</span>
-          </button>
+
+        <div className="flex flex-col items-center w-full max-w-[600px] px-4">
+          <div className="flex flex-col items-center mb-8">
+            <Image src="/logo_emas.png" alt="RestoLink Logo" width={110} height={110} className="object-contain drop-shadow-lg mb-2" priority />
+            <h1 className="text-4xl font-extrabold text-white tracking-wider mt-2 drop-shadow-md">
+              RESTO<span className="text-[#ffc55a]">LINK</span>
+            </h1>
+            <div className="bg-[#2c4e80] text-white text-xs font-bold tracking-widest mt-3 px-6 py-1.5 rounded-full shadow-md uppercase">
+              Chef Portal
+            </div>
+          </div>
+
+          <div className="bg-[#2c4e80] w-full p-10 rounded-2xl shadow-2xl flex justify-center space-x-8 border border-[#ffc55a]/10">
+            <button onClick={() => setView('orders')} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <ConciergeBell className="w-14 h-14 mb-3" />
+              <span className="font-extrabold text-lg text-center leading-tight">Incoming<br/>Order</span>
+            </button>
+            <button onClick={() => setView('inventory')} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <Package className="w-14 h-14 mb-3" />
+              <span className="font-extrabold text-lg">Inventory</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -131,7 +142,7 @@ export default function KokiPage() {
   // ---------------------------------------------------------
   return (
     <div className="w-screen h-screen flex bg-[#00215e] font-sans">
-      <div className="w-[280px] bg-[#00215e] flex flex-col items-center py-10 shrink-0">
+      <div className="w-[280px] bg-[#00215e] flex flex-col items-center py-10 shrink-0 border-r border-[#2c4e80]">
         <Image src="/logo_emas.png" alt="Logo" width={90} height={90} />
         <h2 className="text-white font-extrabold text-3xl mt-6 mb-12 tracking-wide">Kitchen</h2>
         
@@ -178,7 +189,7 @@ export default function KokiPage() {
                   const isReady = isOrderFullyReady(pesanan);
                   return (
                     <div key={pesanan.noNota} className="flex space-x-4">
-                       <div className="bg-[#00215e] w-36 flex items-center justify-center rounded-xl text-white font-bold text-5xl shrink-0 shadow-md">
+                       <div className="bg-[#00215e] w-36 flex items-center justify-center rounded-xl text-[#ffc55a] font-bold text-5xl shrink-0 shadow-md">
                           {pesanan.noMeja}
                        </div>
                        
@@ -204,9 +215,9 @@ export default function KokiPage() {
                        <button 
                           onClick={() => { if(isReady) handleMarkOrderComplete(pesanan.noNota) }}
                           disabled={!isReady}
-                          className={`w-56 rounded-xl font-extrabold text-4xl flex items-center justify-center shrink-0 shadow-md transition-all ${isReady ? 'bg-[#ffc55a] text-[#00215e] hover:opacity-90 cursor-pointer' : 'bg-[#fc4100] text-white opacity-90 cursor-not-allowed'}`}
+                          className={`w-56 rounded-xl font-extrabold text-4xl flex items-center justify-center shrink-0 shadow-md transition-all uppercase tracking-widest ${isReady ? 'bg-[#588157] text-white hover:opacity-90 cursor-pointer' : 'bg-[#fc4100] text-white opacity-90 cursor-not-allowed'}`}
                        >
-                          {isReady ? 'Ready' : 'Not Ready'}
+                          {isReady ? 'Ready' : 'Wait'}
                        </button>
                     </div>
                   );
@@ -226,9 +237,9 @@ export default function KokiPage() {
                      </div>
                      <button 
                         onClick={() => handleToggleBahanStatus(bahan.id, bahan.statusBahan)}
-                        className={`w-72 p-6 rounded-xl font-extrabold text-3xl text-center shadow-md transition-colors shrink-0 ${isReady ? 'bg-[#ffc55a] text-[#00215e] hover:opacity-90' : 'bg-[#fc4100] text-white hover:opacity-90'}`}
+                        className={`w-72 p-6 rounded-xl font-extrabold text-3xl text-center shadow-md transition-colors shrink-0 uppercase tracking-widest ${isReady ? 'bg-[#588157] text-white hover:opacity-90' : 'bg-[#fc4100] text-white hover:opacity-90'}`}
                      >
-                        {isReady ? 'Ready Stock' : 'Out of Stock'}
+                        {isReady ? 'Ready' : 'Empty'}
                      </button>
                   </div>
                 );
