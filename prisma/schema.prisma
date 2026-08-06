@@ -1,5 +1,3 @@
-// optimized prisma schema file without enums for maximum flexibility
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,7 +11,7 @@ datasource db {
 model Pelanggan {
   id             String    @id @default(uuid())
   namaPelanggan  String
-
+  
   // relations
   pesanan        Pesanan[]
 
@@ -22,7 +20,7 @@ model Pelanggan {
 
 model Pegawai {
   id             String      @id
-  pin            String
+  pin            String      
   namaPegawai    String
   jabatan        String      // options: kasir, koki, pelayan, pemilik
 
@@ -52,6 +50,7 @@ model Menu {
 
   // relations
   detailPesanan  DetailPesanan[]
+  komposisi      Komposisi[]
 
   @@map("menu")
 }
@@ -64,8 +63,24 @@ model BahanBaku {
 
   // relations
   pegawai        Pegawai?    @relation(fields: [idPegawai], references: [id])
+  komposisi      Komposisi[]
 
   @@map("bahan_baku")
+}
+
+// associative table representing the many-to-many "membutuhkan" relationship
+model Komposisi {
+  idKomposisi    String    @id @default(uuid())
+  
+  // foreign keys
+  idMenu         String
+  idBahan        String
+
+  // relations
+  menu           Menu      @relation(fields: [idMenu], references: [id], onDelete: Cascade)
+  bahanBaku      BahanBaku @relation(fields: [idBahan], references: [id], onDelete: Cascade)
+
+  @@map("komposisi")
 }
 
 model Pesanan {
@@ -74,7 +89,7 @@ model Pesanan {
   jumlahOrang      Int
   statusPesanan    String            @default("MENUNGGU") // options: menunggu, diproses, selesai
   statusTagihan    String            @default("UNPAID")   // options: unpaid, paid
-
+  
   // foreign keys
   idPelanggan      String
   idPegawai        String?           // optional: which waiter served them
