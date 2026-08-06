@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     // input validation
     if (!username || !pin) {
       return NextResponse.json(
-        { sukses: false, pesan: 'username and pin are required.' },
+        { sukses: false, pesan: 'Username and PIN are required.' },
         { status: 400 }
       );
     }
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     if (!pegawai) {
       return NextResponse.json(
-        { sukses: false, pesan: 'employee not found.' },
+        { sukses: false, pesan: 'Employee not found. Please check your ID.' },
         { status: 401 }
       );
     }
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
     if (!isPinValid) {
       return NextResponse.json(
-        { sukses: false, pesan: 'incorrect pin.' },
+        { sukses: false, pesan: 'Incorrect PIN provided.' },
         { status: 401 }
       );
     }
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     // generate success response
     const response = NextResponse.json({
       sukses: true,
-      pesan: 'login successful.',
+      pesan: 'Login successful.',
       data: { id: pegawai.id, namaPegawai: pegawai.namaPegawai, jabatan: pegawai.jabatan },
     });
 
@@ -56,8 +56,11 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    // log the error to the server console so it can be debugged in vercel logs
+    console.error('Login API Error:', error);
+    
     return NextResponse.json(
-      { sukses: false, pesan: 'server error occurred during authentication.' },
+      { sukses: false, pesan: 'A server error occurred during authentication.' },
       { status: 500 }
     );
   }
