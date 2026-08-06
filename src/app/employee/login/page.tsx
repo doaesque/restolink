@@ -1,4 +1,4 @@
-// employee login page component updated for full english translation
+// employee login page strictly matching the dark blue figma design
 'use client';
 
 import Image from 'next/image';
@@ -7,9 +7,8 @@ import { useState } from 'react';
 
 export default function EmployeeLoginPage() {
   const router = useRouter();
-  const [idPegawai, setIdPegawai] = useState<string>('');
+  const [username, setUsername] = useState<string>('');
   const [pin, setPin] = useState<string>('');
-  const [role, setRole] = useState<string>('PELAYAN');
   const [loading, setLoading] = useState<boolean>(false);
   const [pesanError, setPesanError] = useState<string | null>(null);
 
@@ -22,107 +21,81 @@ export default function EmployeeLoginPage() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idPegawai, pin, role }),
+        body: JSON.stringify({ username, pin }),
       });
 
       const result = await response.json();
 
       if (result.sukses) {
+        const role = result.data.jabatan;
+        // auto redirect based on database role
         if (role === 'PELAYAN') router.push('/employee/pelayan');
         else if (role === 'KOKI') router.push('/employee/koki');
         else if (role === 'KASIR') router.push('/employee/kasir');
-        else if (role === 'PEMILIK') router.push('/employee/pemilik');
+        else if (role === 'PEMILIK') router.push('/employee');
         else router.push('/employee');
       } else {
-        setPesanError(result.pesan || 'Failed to login to the system.');
+        setPesanError(result.pesan || 'failed to login to the system.');
       }
     } catch (err) {
-      setPesanError('System connection error occurred.');
+      setPesanError('system connection error occurred.');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 font-sans text-slate-800">
-      <div className="bg-white border border-slate-200 w-full max-w-md p-8 rounded-2xl shadow-xl space-y-6">
-        <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-20 h-20 flex items-center justify-center p-1">
-            <Image
-              src="/logo.png"
-              alt="RestoLink Logo"
-              width={80}
-              height={80}
-              className="object-contain"
-              priority
-            />
-          </div>
-          <div>
-            <h1 className="text-2xl font-extrabold text-resto-navy tracking-wide">RestoLink</h1>
-            <p className="text-xs text-slate-500 mt-1">Employee Operational Login Portal</p>
-          </div>
+    <div className="w-screen h-screen bg-[#2B4B77] flex items-center justify-center p-4 relative">
+      <div className="flex flex-col items-center space-y-10 z-10 w-full max-w-[500px]">
+        
+        {/* golden logo */}
+        <div className="drop-shadow-2xl">
+          <Image
+            src="/logo_emas.png"
+            alt="RestoLink Logo"
+            width={160}
+            height={160}
+            className="object-contain"
+            priority
+          />
         </div>
 
-        {pesanError && (
-          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg text-center font-medium">
-            {pesanError}
-          </div>
-        )}
+        {/* login box matching figma */}
+        <div className="bg-[#00215e] w-full px-12 py-14 rounded-2xl shadow-2xl flex flex-col items-center space-y-6">
+          {pesanError && (
+            <div className="w-full p-3 bg-red-500/20 border border-red-500/50 text-red-200 text-sm rounded-lg text-center font-bold">
+              {pesanError}
+            </div>
+          )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-              Position / Role
-            </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 px-3 py-2.5 rounded-lg text-sm text-slate-800 focus:outline-none focus:border-resto-navy"
-            >
-              {/* values remain strictly in indonesian to preserve database enum integrity */}
-              <option value="PELAYAN">Waiter (Table Area)</option>
-              <option value="KOKI">Chef (Kitchen & Raw Materials)</option>
-              <option value="KASIR">Cashier (Payments & Receipts)</option>
-              <option value="PEMILIK">Owner (Dashboard & Reports)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-              Employee / Owner ID
-            </label>
+          <form onSubmit={handleLogin} className="w-full space-y-8 flex flex-col items-center">
             <input
               type="text"
-              placeholder="Example: KASIR-001"
-              value={idPegawai}
-              onChange={(e) => setIdPegawai(e.target.value)}
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full bg-slate-50 border border-slate-300 px-3 py-2.5 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-resto-navy"
+              className="w-full bg-[#d9d9d9] text-black px-6 py-4 rounded-lg text-xl font-bold placeholder-gray-600 focus:outline-none focus:ring-4 focus:ring-amber-500/50 shadow-inner"
             />
-          </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-              Access PIN
-            </label>
             <input
               type="password"
-              placeholder="Enter your PIN"
+              placeholder="Password"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               required
-              className="w-full bg-slate-50 border border-slate-300 px-3 py-2.5 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-resto-navy"
+              className="w-full bg-[#d9d9d9] text-black px-6 py-4 rounded-lg text-xl font-bold placeholder-gray-600 focus:outline-none focus:ring-4 focus:ring-amber-500/50 shadow-inner"
             />
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-resto-orange hover:opacity-90 text-white font-bold rounded-lg text-sm transition-all shadow-md disabled:opacity-50 mt-2"
-          >
-            {loading ? 'Validating...' : 'Login to Employee Portal'}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className="bg-[#d9d9d9] hover:bg-white text-black px-14 py-3 rounded-xl text-2xl font-extrabold shadow-[0_4px_15px_rgba(0,0,0,0.5)] transition-all disabled:opacity-50 mt-4 tracking-widest"
+            >
+              {loading ? 'WAIT...' : 'LOGIN'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

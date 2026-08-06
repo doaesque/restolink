@@ -1,4 +1,4 @@
-// authentication api route for employee and owner login translated to english messages
+// authentication api route using pin for login
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
@@ -6,24 +6,24 @@ import bcrypt from 'bcryptjs';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { idPegawai, pin, role } = body;
+    const { username, pin } = body;
 
     // input validation
-    if (!idPegawai || !pin || !role) {
+    if (!username || !pin) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Employee/Owner ID, PIN, and Position are required.' },
+        { sukses: false, pesan: 'username and pin are required.' },
         { status: 400 }
       );
     }
 
-    // fetch employee record
+    // fetch employee record using username (mapped to id in database)
     const pegawai = await prisma.pegawai.findUnique({
-      where: { id: idPegawai },
+      where: { id: username },
     });
 
-    if (!pegawai || pegawai.jabatan !== role) {
+    if (!pegawai) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Credentials or role not found.' },
+        { sukses: false, pesan: 'employee not found.' },
         { status: 401 }
       );
     }
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
     if (!isPinValid) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Incorrect PIN entered.' },
+        { sukses: false, pesan: 'incorrect pin.' },
         { status: 401 }
       );
     }
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     // generate success response
     const response = NextResponse.json({
       sukses: true,
-      pesan: 'Login successful.',
+      pesan: 'login successful.',
       data: { id: pegawai.id, namaPegawai: pegawai.namaPegawai, jabatan: pegawai.jabatan },
     });
 
@@ -50,14 +50,14 @@ export async function POST(request: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 60 * 60 * 12, 
+      maxAge: 60 * 60 * 12,
       path: '/',
     });
 
     return response;
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Server error occurred during authentication.' },
+      { sukses: false, pesan: 'server error occurred during authentication.' },
       { status: 500 }
     );
   }
