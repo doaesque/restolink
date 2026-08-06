@@ -2,6 +2,8 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { Home } from 'lucide-react';
 
 export default function PelayanPage() {
   const router = useRouter();
@@ -12,18 +14,31 @@ export default function PelayanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#2B4B77] p-8 text-white relative">
-      <div className="absolute top-6 right-6">
-         <button onClick={handleLogout} className="bg-red-600/80 px-5 py-2 rounded-lg font-bold hover:bg-red-600 transition-colors shadow-lg">Logout</button>
+    <div className="w-screen h-screen flex bg-[#00215e] font-sans">
+      <div className="w-[280px] bg-[#00215e] flex flex-col items-center py-10 shrink-0">
+        <Image src="/logo_emas.png" alt="Logo" width={90} height={90} />
+        <h2 className="text-white font-extrabold text-4xl mt-6 mb-12 tracking-wide">Waiter</h2>
+        
+        <button 
+          className="w-3/4 py-4 rounded-xl font-extrabold text-xl mb-6 shadow-lg transition-colors bg-[#ffc55a] text-[#00215e]"
+        >
+          Create Order
+        </button>
+        
+        <div className="mt-auto w-full flex flex-col items-center space-y-4">
+           <button onClick={handleLogout} className="text-white font-extrabold text-2xl flex items-center hover:text-[#fc4100] transition-colors">
+             <Home className="w-8 h-8 mr-3" /> Logout
+           </button>
+        </div>
       </div>
 
-      <div className="mb-10 text-center">
-        <h2 className="text-4xl font-extrabold tracking-wide">Waiter Area</h2>
-        <p className="text-lg text-blue-200 mt-2">Table management functionality goes here.</p>
-      </div>
-      
-      <div className="bg-[#00215e] p-10 rounded-2xl shadow-2xl flex justify-center">
-          <p className="text-2xl font-bold text-gray-300">Waiter module active.</p>
+      <div className="flex-1 bg-[#2c4e80] p-10 rounded-tl-[40px] shadow-[inset_10px_10px_20px_rgba(0,0,0,0.4)] flex flex-col items-center justify-center">
+         <h1 className="text-5xl font-extrabold text-white mb-6 tracking-wide drop-shadow-md">
+           Waiter Area
+         </h1>
+         <div className="bg-[#00215e] w-full max-w-2xl p-12 rounded-3xl shadow-2xl text-[#ffc55a] font-bold text-2xl text-center border border-[#ffc55a]/10">
+             System active. UI functionality development pending for Waiter...
+         </div>
       </div>
     </div>
   );
