@@ -1,240 +1,84 @@
-// kitchen display system updated with english translation
+// chef module interface matching figma welcome design
 'use client';
 
 import { useEffect, useState } from 'react';
-
-interface DetailPesanan {
-  idDetail: string;
-  jumlahPesanan: number;
-  menu: {
-    namaMenu: string;
-  };
-}
-
-interface Pesanan {
-  noNota: string;
-  tglPesanan: string;
-  noMeja: number;
-  statusPesanan: 'MENUNGGU' | 'DIPROSES' | 'SELESAI';
-  pelanggan: {
-    namaPelanggan: string;
-  };
-  detailPesanan: DetailPesanan[];
-}
-
-interface BahanBaku {
-  id: string;
-  namaBahan: string;
-  statusBahan: string;
-}
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 export default function KokiPage() {
-  const [listPesanan, setListPesanan] = useState<Pesanan[]>([]);
-  const [listBahan, setListBahan] = useState<BahanBaku[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [updatingBahanId, setUpdatingBahanId] = useState<string | null>(null);
-  const [updatingNotaId, setUpdatingNotaId] = useState<string | null>(null);
+  const router = useRouter();
+  const [view, setView] = useState<'welcome' | 'orders' | 'inventory'>('welcome');
 
-  useEffect(() => {
-    fetchAllData();
-    const interval = setInterval(fetchAllData, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  async function fetchAllData() {
-    try {
-      const [resPesanan, resBahan] = await Promise.all([
-        fetch('/api/pesanan'),
-        fetch('/api/bahan-baku'),
-      ]);
-
-      const dataPesanan = await resPesanan.json();
-      const dataBahan = await resBahan.json();
-
-      if (dataPesanan.sukses) setListPesanan(dataPesanan.data);
-      if (dataBahan.sukses) setListBahan(dataBahan.data);
-    } catch (err) {
-      console.error('failed to fetch chef kitchen data:', err);
-    } finally {
-      setLoading(false);
-    }
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/employee/login');
   }
 
-  // update order status to completed
-  async function handleMarkOrderComplete(noNota: string) {
-    setUpdatingNotaId(noNota);
-    try {
-      const res = await fetch('/api/pesanan', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ noNota, statusPesanan: 'SELESAI' }), // status mapped to database enum
-      });
-
-      const data = await res.json();
-      if (data.sukses) {
-        fetchAllData();
-      }
-    } catch (err) {
-      console.error('failed to mark order as completed:', err);
-    } finally {
-      setUpdatingNotaId(null);
-    }
+  // ---------------------------------------------------------
+  // 1. welcome screen view
+  // ---------------------------------------------------------
+  if (view === 'welcome') {
+    return (
+      <div className="w-screen h-screen bg-[#2B4B77] flex flex-col items-center justify-center relative">
+        <div className="absolute top-6 right-6">
+           <button onClick={handleLogout} className="bg-red-600/80 px-4 py-2 rounded font-bold hover:bg-red-600">Logout</button>
+        </div>
+        <Image src="/logo_emas.png" alt="Logo" width={150} height={150} className="drop-shadow-xl" />
+        <h1 className="text-6xl font-bold mt-8 tracking-wide">Welcome...</h1>
+        <h2 className="text-3xl font-bold mt-3 tracking-widest">-Chef-</h2>
+        
+        <div className="bg-[#00215e] p-10 mt-12 rounded-2xl shadow-2xl flex space-x-8">
+          <button onClick={() => setView('orders')} className="bg-[#d9d9d9] text-[#00215e] p-6 rounded-2xl flex flex-col items-center w-48 h-40 justify-center shadow-[0_10px_20px_rgba(0,0,0,0.5)] hover:bg-white transition-all hover:scale-105">
+            <span className="text-6xl mb-3">🍽️</span>
+            <span className="font-extrabold text-xl">Incoming Order</span>
+          </button>
+          <button onClick={() => setView('inventory')} className="bg-[#d9d9d9] text-[#00215e] p-6 rounded-2xl flex flex-col items-center w-48 h-40 justify-center shadow-[0_10px_20px_rgba(0,0,0,0.5)] hover:bg-white transition-all hover:scale-105">
+            <span className="text-6xl mb-3">📦</span>
+            <span className="font-extrabold text-xl">Inventory</span>
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  // toggle raw material availability status
-  async function handleToggleBahanStatus(id: string, currentStatus: string) {
-    const nextStatus = currentStatus === 'TERSEDIA' ? 'HABIS' : 'TERSEDIA'; // mapped to database enum
-    setUpdatingBahanId(id);
-
-    try {
-      const res = await fetch('/api/bahan-baku', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, statusBahan: nextStatus }),
-      });
-
-      const data = await res.json();
-      if (data.sukses) {
-        setListBahan((prev) =>
-          prev.map((b) => (b.id === id ? { ...b, statusBahan: nextStatus } : b))
-        );
-      }
-    } catch (err) {
-      console.error('failed to update raw material status:', err);
-    } finally {
-      setUpdatingBahanId(null);
-    }
-  }
-
-  if (loading) {
-    return <div className="text-center py-12 text-slate-500">Loading kitchen display...</div>;
-  }
-
-  const pesananDapur = listPesanan.filter((p) => p.statusPesanan !== 'SELESAI');
-
+  // ---------------------------------------------------------
+  // 2. main chef interface
+  // ---------------------------------------------------------
   return (
-    <div className="space-y-8 text-slate-800">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-resto-navy">Kitchen Display & Stock Control</h2>
-          <p className="text-sm text-slate-500">Monitor incoming orders and manage kitchen raw material availability.</p>
-        </div>
-        <button
-          onClick={fetchAllData}
-          className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold shadow-sm"
+    <div className="w-screen h-screen flex bg-[#00215e]">
+      {/* sidebar */}
+      <div className="w-[280px] flex flex-col items-center py-10 shrink-0">
+        <Image src="/logo_emas.png" alt="Logo" width={100} height={100} />
+        <h2 className="text-white font-extrabold text-4xl mt-6 mb-12 tracking-wide">Chef</h2>
+        
+        <button 
+          onClick={() => setView('orders')} 
+          className={`w-3/4 py-4 rounded-xl font-extrabold text-lg mb-6 shadow-lg transition-colors ${view === 'orders' ? 'bg-[#d9d9d9] text-black' : 'bg-[#335384] text-white hover:bg-[#4d6a9e]'}`}
         >
-          🔄 Refresh Queue
+          Orders
         </button>
+        <button 
+          onClick={() => setView('inventory')} 
+          className={`w-3/4 py-4 rounded-xl font-extrabold text-lg mb-6 shadow-lg transition-colors ${view === 'inventory' ? 'bg-[#d9d9d9] text-black' : 'bg-[#335384] text-white hover:bg-[#4d6a9e]'}`}
+        >
+          Inventory
+        </button>
+        
+        <div className="mt-auto w-full flex flex-col items-center">
+           <button onClick={() => setView('welcome')} className="text-white font-extrabold text-2xl flex items-center hover:scale-110 transition-transform">
+             <span className="mr-3 text-3xl">🏠</span> Home
+           </button>
+        </div>
       </div>
 
-      {/* kitchen active order queue section */}
-      <div className="space-y-4">
-        <h3 className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-          Active Food Order Queue
-        </h3>
-
-        {pesananDapur.length === 0 ? (
-          <div className="bg-white border border-slate-200 p-10 text-center rounded-xl space-y-2 shadow-sm">
-            <p className="text-3xl">👨‍🍳✨</p>
-            <p className="text-slate-800 font-bold">No active orders!</p>
-            <p className="text-xs text-slate-500">All food orders have been completely cooked.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pesananDapur.map((pesanan) => (
-              <div
-                key={pesanan.noNota}
-                className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col justify-between"
-              >
-                {/* order header */}
-                <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
-                  <div>
-                    <span className="text-xs text-resto-orange font-bold uppercase tracking-wider">
-                      Table {pesanan.noMeja}
-                    </span>
-                    <h3 className="text-base font-extrabold text-slate-800">
-                      {pesanan.pelanggan.namaPelanggan}
-                    </h3>
-                  </div>
-                  <span className="text-[10px] px-2.5 py-1 bg-amber-100 border border-amber-300 text-amber-800 rounded-full font-bold uppercase">
-                    {pesanan.statusPesanan}
-                  </span>
-                </div>
-
-                {/* order items */}
-                <div className="p-4 space-y-2 flex-1">
-                  <p className="text-xs font-bold text-slate-500 mb-2">Ordered Menu List:</p>
-                  {pesanan.detailPesanan.map((item) => (
-                    <div
-                      key={item.idDetail}
-                      className="flex justify-between items-center text-sm py-1.5 border-b border-slate-100"
-                    >
-                      <span className="text-slate-700 font-semibold">{item.menu.namaMenu}</span>
-                      <span className="text-resto-navy font-extrabold px-2 py-0.5 bg-slate-100 rounded border border-slate-200">
-                        x{item.jumlahPesanan}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* completion button */}
-                <div className="p-4 bg-slate-50 border-t border-slate-200">
-                  <button
-                    onClick={() => handleMarkOrderComplete(pesanan.noNota)}
-                    disabled={updatingNotaId === pesanan.noNota}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors shadow-sm disabled:opacity-50"
-                  >
-                    {updatingNotaId === pesanan.noNota ? 'Processing...' : 'Mark as Cooked'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* raw materials stock management section */}
-      <div className="bg-white border border-slate-200 p-6 rounded-xl space-y-4 shadow-sm">
-        <div>
-          <h3 className="text-base font-bold text-resto-navy">Raw Material Availability Management</h3>
-          <p className="text-xs text-slate-500">Update kitchen raw material status. Waiters cannot process orders if raw materials are marked as exhausted.</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {listBahan.map((bahan) => {
-            const isTersedia = bahan.statusBahan.toLowerCase() === 'tersedia';
-
-            return (
-              <div
-                key={bahan.id}
-                className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between"
-              >
-                <div>
-                  <p className="text-xs font-bold text-slate-800">{bahan.namaBahan}</p>
-                  <span
-                    className={`text-[10px] font-bold uppercase ${
-                      isTersedia ? 'text-emerald-600' : 'text-rose-600'
-                    }`}
-                  >
-                    • {bahan.statusBahan}
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => handleToggleBahanStatus(bahan.id, bahan.statusBahan)}
-                  disabled={updatingBahanId === bahan.id}
-                  className={`px-3 py-1 rounded text-xs font-bold border transition-all ${
-                    isTersedia
-                      ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
-                      : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                  }`}
-                >
-                  {updatingBahanId === bahan.id ? '...' : isTersedia ? 'Set Out of Stock' : 'Set Available'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+      {/* main content placeholder */}
+      <div className="flex-1 bg-[#A6C4E5] p-10 rounded-tl-[40px] shadow-[inset_10px_10px_20px_rgba(0,0,0,0.3)] flex flex-col overflow-y-auto">
+         <h1 className="text-3xl font-extrabold text-[#00215e] mb-6">
+           {view === 'orders' ? 'Live Kitchen Display' : 'Raw Materials Stock'}
+         </h1>
+         <div className="bg-[#4D648D] w-full p-8 rounded-2xl shadow-md text-white font-bold text-center">
+             System active. Awaiting new data...
+         </div>
       </div>
     </div>
   );
