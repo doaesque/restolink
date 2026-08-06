@@ -1,3 +1,5 @@
+// optimized prisma schema file without enums for maximum flexibility
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -6,47 +8,12 @@ datasource db {
   provider = "postgresql"
 }
 
-// enums for status definitions
-enum RolePegawai {
-  KASIR
-  KOKI
-  PELAYAN
-  PEMILIK
-}
-
-enum StatusMeja {
-  TERSEDIA
-  OCCUPIED
-}
-
-enum StatusPesanan {
-  MENUNGGU
-  DIPROSES
-  SELESAI
-}
-
-enum StatusTagihan {
-  UNPAID
-  PAID
-}
-
-enum StatusBahan {
-  TERSEDIA
-  HABIS
-}
-
-enum MetodePembayaran {
-  TUNAI
-  QRIS
-  DEBIT
-}
-
 // models based on the relational schema
 
 model Pelanggan {
   id             String    @id @default(uuid())
   namaPelanggan  String
-  
+
   // relations
   pesanan        Pesanan[]
 
@@ -55,9 +22,9 @@ model Pelanggan {
 
 model Pegawai {
   id             String      @id
-  pin            String      
+  pin            String
   namaPegawai    String
-  jabatan        RolePegawai
+  jabatan        String      // options: kasir, koki, pelayan, pemilik
 
   // relations
   pesanan        Pesanan[]
@@ -70,7 +37,7 @@ model Pegawai {
 
 model Meja {
   noMeja         Int        @id
-  status         StatusMeja @default(TERSEDIA)
+  status         String     @default("TERSEDIA") // options: tersedia, occupied
 
   // relations
   pesanan        Pesanan[]
@@ -92,11 +59,11 @@ model Menu {
 model BahanBaku {
   id             String      @id @default(uuid())
   namaBahan      String
-  statusBahan    StatusBahan @default(TERSEDIA)
-  idPegawai      String?   // tracks which employee last updated it
+  statusBahan    String      @default("TERSEDIA") // options: tersedia, habis
+  idPegawai      String?     // tracks which employee last updated it
 
   // relations
-  pegawai        Pegawai?  @relation(fields: [idPegawai], references: [id])
+  pegawai        Pegawai?    @relation(fields: [idPegawai], references: [id])
 
   @@map("bahan_baku")
 }
@@ -105,13 +72,12 @@ model Pesanan {
   noNota           String            @id @default(uuid())
   tglPesanan       DateTime          @default(now())
   jumlahOrang      Int
-  metodePembayaran MetodePembayaran?
-  statusPesanan    StatusPesanan     @default(MENUNGGU)
-  statusTagihan    StatusTagihan     @default(UNPAID)
-  
+  statusPesanan    String            @default("MENUNGGU") // options: menunggu, diproses, selesai
+  statusTagihan    String            @default("UNPAID")   // options: unpaid, paid
+
   // foreign keys
   idPelanggan      String
-  idPegawai        String?       // optional: which waiter served them
+  idPegawai        String?           // optional: which waiter served them
   noMeja           Int
 
   // relations
@@ -141,24 +107,25 @@ model DetailPesanan {
 }
 
 model Pembayaran {
-  noKwitansi     String    @id @default(uuid())
-  totalBayar     Float
-  tglPembayaran  DateTime  @default(now())
+  noKwitansi       String    @id @default(uuid())
+  totalBayar       Float
+  tglPembayaran    DateTime  @default(now())
+  metodePembayaran String    // options: tunai, qris, debit
 
   // foreign keys
-  noNota         String    @unique
-  idPegawai      String
+  noNota           String    @unique
+  idPegawai        String
 
   // relations
-  pesanan        Pesanan   @relation(fields: [noNota], references: [noNota])
-  kasir          Pegawai   @relation(fields: [idPegawai], references: [id])
+  pesanan          Pesanan   @relation(fields: [noNota], references: [noNota])
+  kasir            Pegawai   @relation(fields: [idPegawai], references: [id])
 
   @@map("pembayaran")
 }
 
 model Laporan {
   idLaporan        String    @id @default(uuid())
-  periode          String    // e.g., "harian", "mingguan"
+  periode          String    // options: harian, mingguan, bulanan, tahunan
   totalPendapatan  Float
   tglLaporan       DateTime  @default(now())
 
