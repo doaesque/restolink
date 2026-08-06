@@ -15,8 +15,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // fallback idPegawai if not passed
+    // fallback idpegawai if not passed
     const cashierId = idPegawai || 'KASIR-001';
+    const finalMetode = metodePembayaran || 'CASH';
 
     const hasilPembayaran = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // fetch target order
@@ -32,21 +33,21 @@ export async function POST(request: Request) {
         throw new Error('This order has already been paid.');
       }
 
-      // create payment transaction entry
+      // create payment transaction entry including the new payment method column
       const pembayaran = await tx.pembayaran.create({
         data: {
           noNota,
           totalBayar: parseFloat(totalBayar.toString()),
+          metodePembayaran: finalMetode, 
           idPegawai: cashierId,
         },
       });
 
-      // update order billing status and payment method
+      // update order billing status only (payment method removed from here to optimize schema)
       await tx.pesanan.update({
         where: { noNota },
         data: {
           statusTagihan: 'PAID',
-          metodePembayaran: metodePembayaran || 'TUNAI',
         },
       });
 
