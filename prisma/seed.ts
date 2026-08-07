@@ -1,4 +1,3 @@
-// prisma/seed.ts
 import prisma from '../src/lib/prisma';
 import bcrypt from 'bcryptjs';
 
@@ -36,16 +35,34 @@ async function main() {
   }));
   await prisma.meja.createMany({ data: mejaData });
 
-  console.log('inserting fancy fine dining menu data...');
+  console.log('inserting expanded fancy fine dining menu data with categories...');
   
   await prisma.menu.createMany({
     data: [
-      { namaMenu: 'WAGYU A5 FILLET MIGNON WITH TRUFFLE SHAVINGS', harga: 2000000 },
-      { namaMenu: '45-DAY DRY-AGED T-BONE STEAK', harga: 2800000 },
-      { namaMenu: '24K GOLD LEAF TOMAHAWK RIBEYE', harga: 5000000 },
-      { namaMenu: 'ARTESIAN CRYSTAL WATER', harga: 120000 },
-      { namaMenu: 'TRUFFLE-INFUSED SMOKY OLD FASHIONED', harga: 300000 },
-      { namaMenu: '24K GOLD DUST ESPRESSO MARTINI', harga: 450000 },
+      // food items - daging
+      { namaMenu: 'WAGYU A5 FILLET MIGNON WITH TRUFFLE SHAVINGS', kategori: 'FOOD', subKategori: 'Daging', harga: 2000000, image: '/makanan_wagyu.png' },
+      { namaMenu: '45-DAY DRY-AGED T-BONE STEAK', kategori: 'FOOD', subKategori: 'Daging', harga: 2800000, image: '/makanan_steak.png' },
+      { namaMenu: '24K GOLD LEAF TOMAHAWK RIBEYE', kategori: 'FOOD', subKategori: 'Daging', harga: 5000000, image: '/makanan_ribeye.png' },
+      
+      // food items - seafood
+      { namaMenu: 'PAN-SEARED HOKKAIDO SCALLOPS WITH CAVIAR', kategori: 'FOOD', subKategori: 'Seafood', harga: 1500000, image: null },
+      { namaMenu: 'GRILLED BLACK COD WITH MISO GLAZE', kategori: 'FOOD', subKategori: 'Seafood', harga: 1800000, image: null },
+      { namaMenu: 'LOBSTER THERMIDOR WITH SAFFRON BUTTER', kategori: 'FOOD', subKategori: 'Seafood', harga: 3200000, image: null },
+      
+      // food items - pasta/mie
+      { namaMenu: 'TRUFFLE RISOTTO WITH PARMESAN CRISP', kategori: 'FOOD', subKategori: 'Pasta', harga: 850000, image: null },
+
+      // drink items - other
+      { namaMenu: 'ARTESIAN CRYSTAL WATER', kategori: 'DRINKS', subKategori: 'Other', harga: 120000, image: '/minuman_crystal_water.png' },
+      { namaMenu: 'TRUFFLE-INFUSED SMOKY OLD FASHIONED', kategori: 'DRINKS', subKategori: 'Other', harga: 300000, image: '/minuman_bourbon.png' },
+      { namaMenu: 'VINTAGE DOM PÉRIGNON CHAMPAGNE', kategori: 'DRINKS', subKategori: 'Other', harga: 7500000, image: null },
+
+      // drink items - coffee
+      { namaMenu: '24K GOLD DUST ESPRESSO MARTINI', kategori: 'DRINKS', subKategori: 'Coffee', harga: 450000, image: '/minuman_martini.png' },
+      { namaMenu: 'BLUE MOUNTAIN HAND-POURED COFFEE', kategori: 'DRINKS', subKategori: 'Coffee', harga: 250000, image: null },
+      
+      // drink items - tea
+      { namaMenu: 'EARL GREY IMPERIAL TEA', kategori: 'DRINKS', subKategori: 'Tea', harga: 180000, image: null },
     ],
   });
 
@@ -74,3 +91,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+  

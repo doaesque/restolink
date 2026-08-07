@@ -46,7 +46,10 @@ model Meja {
 model Menu {
   id             String    @id @default(uuid())
   namaMenu       String
+  kategori       String    // options: FOOD, DRINKS
+  subKategori    String    // options: Daging, Seafood, Coffee, Tea, etc.
   harga          Float
+  image          String?   // optional image path for the menu item
 
   // relations
   detailPesanan  DetailPesanan[]
