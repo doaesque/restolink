@@ -35,7 +35,10 @@ function CustomerOrderContent() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [menus, setMenus] = useState<MenuData[]>([]);
   const [tables, setTables] = useState<TableData[]>([]);
+  
+  // order context data
   const [selectedTable, setSelectedTable] = useState<string>('');
+  const [customerName, setCustomerName] = useState<string>('');
   const [cart, setCart] = useState<{ id: string; qty: number }[]>([]);
   
   // session state for table orders
@@ -148,10 +151,13 @@ function CustomerOrderContent() {
 
     try {
       const payload = {
+        namaPelanggan: customerName.trim() || 'Guest',
         idPelanggan: 'Guest', 
         idPegawai: 'KASIR-001', 
         jumlahOrang: 2,
         noMeja: parseInt(selectedTable, 10) || 1,
+        statusTagihan: statusTagihan, // correctly sends PAID or UNPAID
+        metodePembayaran: paymentMethod, // connects method directly
         items: cart.map(item => {
           const m = menus.find(x => x.id === item.id)!;
           return {
@@ -184,14 +190,14 @@ function CustomerOrderContent() {
         });
         setActiveOrders(prev => [...prev, ...newItems]);
 
-        if (statusTagihan === 'UNPAID') {
+        if (statusTagihan === 'UNPAID' && !paymentMethod) { // pure PAY LATER
            setModalState('NONE');
            setOrderSuccess('UNPAID');
-           setCart([]); // clear cart for new selections in same session
-        } else if (paymentMethod) {
+           setCart([]); 
+        } else if (paymentMethod) { // CASH or CASHLESS chosen
            setModalState('NONE');
            setReceiptType(paymentMethod);
-           setCashlessStep('RECEIPT'); // always show yellow receipt first
+           setCashlessStep('RECEIPT'); 
            setIsPaid(false);
         }
       } else {
@@ -208,9 +214,10 @@ function CustomerOrderContent() {
   // handle finish payment flow (shows stamp then opens success modal)
   const completePayment = (method: 'CASH' | 'CASHLESS') => {
     setIsPaid(true);
+    // extended timeout to 3 seconds for better stamp visibility at 10% opacity
     setTimeout(() => {
       setOrderSuccess(method);
-    }, 2000);
+    }, 3000);
   };
 
   const resetFlow = () => {
@@ -219,6 +226,8 @@ function CustomerOrderContent() {
     setCurrentNota(null);
     setExpandedCategory(null);
     setActiveSubcategory(null);
+    setCustomerName(''); // clear customer name for new guests
+    setSelectedTable(''); // clear table
     setModalState('NONE');
     setReceiptType(null);
     setCashlessStep('RECEIPT');
@@ -270,13 +279,22 @@ function CustomerOrderContent() {
         <div className="relative z-10 flex flex-col items-center justify-center space-y-12">
           <Image src="/logo_emas.png" alt="RestoLink Logo" width={320} height={320} className="drop-shadow-2xl object-contain" priority />
           
-          {/* beautified dynamic table selection */}
-          <div className="flex flex-col items-center space-y-5 w-72">
+          {/* inputs for customer details */}
+          <div className="flex flex-col items-center space-y-5 w-80">
+            
+            <input 
+              type="text" 
+              placeholder="ENTER YOUR NAME"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="w-full bg-[#00215e] text-[#ffc55a] border-2 border-[#ffc55a] p-4 rounded-xl font-bold tracking-widest text-center placeholder-[#ffc55a]/50 focus:outline-none transition-all text-sm uppercase"
+            />
+
             <div className="relative w-full group">
               <select 
                 value={selectedTable} 
                 onChange={(e) => setSelectedTable(e.target.value)}
-                className="w-full bg-[#00215e] text-[#ffc55a] border-2 border-[#ffc55a] p-4 rounded-xl font-bold tracking-widest text-center appearance-none focus:outline-none shadow-[0_0_15px_rgba(255,197,90,0.15)] transition-all cursor-pointer text-sm"
+                className="w-full bg-[#00215e] text-[#ffc55a] border-2 border-[#ffc55a] p-4 rounded-xl font-bold tracking-widest text-center appearance-none focus:outline-none transition-all cursor-pointer text-sm"
               >
                 <option value="" disabled>SELECT TABLE</option>
                 {tables.map(t => (
@@ -288,7 +306,7 @@ function CustomerOrderContent() {
 
             <button 
               onClick={() => setShowWelcome(false)}
-              disabled={!selectedTable}
+              disabled={!selectedTable || !customerName.trim()}
               className="w-full bg-[#00215e] border-2 border-[#ffc55a] text-[#ffc55a] px-8 py-4 rounded-xl text-3xl font-bold tracking-widest hover:bg-[#ffc55a] hover:text-[#00215e] transition-all shadow-2xl uppercase disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ORDER
@@ -308,7 +326,7 @@ function CustomerOrderContent() {
         {/* yellow centered receipt for cash and step 1 of cashless */}
         {(receiptType === 'CASH' || (receiptType === 'CASHLESS' && cashlessStep === 'RECEIPT')) && (
           <div className="relative z-10 bg-[#ffc55a] text-[#00215e] w-[450px] p-8 rounded-xl shadow-2xl border-4 border-[#00215e]/10 animate-in fade-in zoom-in duration-300">
-            {/* huge subtle stamp image overlay when paid (only for cash here since cashless pays on next step) */}
+            {/* subtle huge stamp image overlay when paid */}
             {isPaid && receiptType === 'CASH' && (
               <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none overflow-visible">
                 <Image src="/cap_biru.png" alt="Paid Stamp" width={350} height={350} className="transform -rotate-12 opacity-10 drop-shadow-xl animate-in zoom-in-50 duration-200" />
@@ -382,7 +400,7 @@ function CustomerOrderContent() {
             
             {/* dark receipt for cashless on the left */}
             <div className="relative bg-[#111111]/90 text-[#ffc55a] w-[450px] p-8 rounded-2xl shadow-2xl border-2 border-[#ffc55a]/40 backdrop-blur-md">
-              {/* huge subtle white stamp image overlay when paid */}
+              {/* subtle huge white stamp image overlay when paid */}
               {isPaid && (
                 <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none overflow-visible">
                   <Image src="/cap_putih.png" alt="Paid Stamp" width={350} height={350} className="transform -rotate-12 opacity-10 drop-shadow-2xl animate-in zoom-in-50 duration-200" />
@@ -477,7 +495,9 @@ function CustomerOrderContent() {
                 <button onClick={() => setModalState('NONE')} className="absolute top-4 right-4 bg-[#00215e] text-[#ffc55a] rounded-full p-1 hover:scale-110 transition-transform"><X className="w-5 h-5"/></button>
                 <h2 className="text-2xl font-extrabold text-center mb-6 tracking-wide">How would you like to pay?</h2>
                 <div className="flex flex-col space-y-4">
-                  <button onClick={() => handleOrder('PAID', 'CASH')} disabled={isOrdering} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">CASH</button>
+                  {/* UNPAID intent for cash pay, so it shows up at cashier for manual fulfillment */}
+                  <button onClick={() => handleOrder('UNPAID', 'CASH')} disabled={isOrdering} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">CASH</button>
+                  {/* PAID intent for cashless, instantly marks as processed */}
                   <button onClick={() => handleOrder('PAID', 'CASHLESS')} disabled={isOrdering} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">CASHLESS</button>
                 </div>
               </div>
@@ -637,7 +657,7 @@ function CustomerOrderContent() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold tracking-widest uppercase">Order Menu</h2>
-                  <p className="text-xs opacity-80 mt-1 font-semibold tracking-wide">Table {selectedTable}</p>
+                  <p className="text-xs opacity-80 mt-1 font-semibold tracking-wide">Table {selectedTable} • {customerName}</p>
                 </div>
               </div>
 
@@ -727,7 +747,7 @@ function CustomerOrderContent() {
               </button>
             ) : (
               <button 
-                onClick={resetFlow} 
+                onClick={resetFlow}
                 className="w-full bg-[#00215e] text-[#ffc55a] py-4 rounded-xl font-bold tracking-widest hover:opacity-90 shadow-lg transition-opacity"
               >
                 BACK TO HOME
