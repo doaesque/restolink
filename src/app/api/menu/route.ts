@@ -1,16 +1,17 @@
-// api route for fetching menu items from the database
+// src/app/api/menu/route.ts
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import prisma from '../../../lib/prisma'; 
+
+// force next.js to bypass cache and dynamically fetch the latest db data
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const menu = await prisma.menu.findMany({
-      orderBy: { namaMenu: 'asc' },
-    });
-    return NextResponse.json({ sukses: true, data: menu });
+    const menus = await prisma.menu.findMany();
+    return NextResponse.json({ sukses: true, data: menus });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'Failed to fetch menu data.' },
+      { sukses: false, pesan: 'gagal mengambil data menu' }, 
       { status: 500 }
     );
   }

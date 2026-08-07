@@ -14,6 +14,15 @@ async function main() {
   await prisma.pegawai.deleteMany();
   await prisma.pelanggan.deleteMany();
 
+  console.log('inserting customer data...');
+  // creating a generic guest customer for walk-in orders
+  await prisma.pelanggan.create({
+    data: {
+      id: 'Guest',
+      namaPelanggan: 'Walk-in Guest'
+    }
+  });
+
   console.log('inserting employee data (team bandros)...');
   
   const defaultPin = await bcrypt.hash('123456', 10);
@@ -79,6 +88,63 @@ async function main() {
       { id: 'BB-07', namaBahan: 'Iranian Saffron Threads', statusBahan: 'HABIS' },
     ],
   });
+
+  console.log('inserting dummy orders...');
+  
+  // fetching back some menus to create relational order data
+  const allMenus = await prisma.menu.findMany();
+  
+  if (allMenus.length >= 2) {
+    const menu1 = allMenus[0];
+    const menu2 = allMenus[1];
+
+    // dummy order 1: completed and paid (cashless)
+    const subtotal1 = (menu1.harga * 2) + (menu2.harga * 1);
+    const tax1 = subtotal1 * 0.1;
+    const total1 = subtotal1 + tax1;
+
+    await prisma.pesanan.create({
+      data: {
+        jumlahOrang: 2,
+        noMeja: 3,
+        idPelanggan: 'Guest',
+        idPegawai: 'KASIR-001',
+        statusPesanan: 'SELESAI',
+        statusTagihan: 'PAID',
+        detailPesanan: {
+          create: [
+            { idMenu: menu1.id, jumlahPesanan: 2, subtotal: menu1.harga * 2 },
+            { idMenu: menu2.id, jumlahPesanan: 1, subtotal: menu2.harga * 1 }
+          ]
+        },
+        pembayaran: {
+          create: {
+            totalBayar: total1,
+            metodePembayaran: 'CASHLESS',
+            idPegawai: 'KASIR-001'
+          }
+        }
+      }
+    });
+
+    // dummy order 2: waiting to be cooked, currently unpaid
+    const menu3 = allMenus[allMenus.length - 1]; // pick a drink
+    await prisma.pesanan.create({
+      data: {
+        jumlahOrang: 4,
+        noMeja: 8,
+        idPelanggan: 'Guest',
+        statusPesanan: 'MENUNGGU',
+        statusTagihan: 'UNPAID',
+        detailPesanan: {
+          create: [
+            { idMenu: menu1.id, jumlahPesanan: 4, subtotal: menu1.harga * 4 },
+            { idMenu: menu3.id, jumlahPesanan: 4, subtotal: menu3.harga * 4 }
+          ]
+        }
+      }
+    });
+  }
 
   console.log('database seeding completed! 🍽️✨');
 }
