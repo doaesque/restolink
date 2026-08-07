@@ -4,7 +4,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { X, ChevronDown, CheckCircle, ShoppingBag, Receipt, ArrowRight } from 'lucide-react';
+import { X, ChevronDown, ShoppingBag, Receipt, ArrowRight } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface MenuData {
@@ -208,10 +208,9 @@ function CustomerOrderContent() {
   // handle finish payment flow (shows stamp then opens success modal)
   const completePayment = (method: 'CASH' | 'CASHLESS') => {
     setIsPaid(true);
-    // timeout adjusted to clearly show the large stamp before proceeding
     setTimeout(() => {
       setOrderSuccess(method);
-    }, 2500);
+    }, 2000);
   };
 
   const resetFlow = () => {
@@ -272,19 +271,19 @@ function CustomerOrderContent() {
           <Image src="/logo_emas.png" alt="RestoLink Logo" width={320} height={320} className="drop-shadow-2xl object-contain" priority />
           
           {/* beautified dynamic table selection */}
-          <div className="flex flex-col items-center space-y-5 w-80">
+          <div className="flex flex-col items-center space-y-5 w-72">
             <div className="relative w-full group">
               <select 
                 value={selectedTable} 
                 onChange={(e) => setSelectedTable(e.target.value)}
-                className="w-full bg-[#00215e]/90 text-[#ffc55a] border-2 border-[#ffc55a] p-4 rounded-xl font-bold tracking-widest text-center appearance-none focus:outline-none shadow-[0_0_15px_rgba(255,197,90,0.15)] group-hover:shadow-[0_0_25px_rgba(255,197,90,0.3)] transition-all cursor-pointer text-lg"
+                className="w-full bg-[#00215e] text-[#ffc55a] border-2 border-[#ffc55a] p-4 rounded-xl font-bold tracking-widest text-center appearance-none focus:outline-none shadow-[0_0_15px_rgba(255,197,90,0.15)] transition-all cursor-pointer text-sm"
               >
                 <option value="" disabled>SELECT TABLE</option>
                 {tables.map(t => (
                   <option key={t.noMeja} value={t.noMeja} className="bg-[#00215e] text-[#ffc55a]">Table {t.noMeja}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-[#ffc55a] pointer-events-none w-6 h-6" />
+              <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-[#ffc55a] pointer-events-none w-5 h-5" />
             </div>
 
             <button 
@@ -309,10 +308,10 @@ function CustomerOrderContent() {
         {/* yellow centered receipt for cash and step 1 of cashless */}
         {(receiptType === 'CASH' || (receiptType === 'CASHLESS' && cashlessStep === 'RECEIPT')) && (
           <div className="relative z-10 bg-[#ffc55a] text-[#00215e] w-[450px] p-8 rounded-xl shadow-2xl border-4 border-[#00215e]/10 animate-in fade-in zoom-in duration-300">
-            {/* huge stamp image overlay when paid */}
+            {/* huge subtle stamp image overlay when paid (only for cash here since cashless pays on next step) */}
             {isPaid && receiptType === 'CASH' && (
               <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none overflow-visible">
-                <Image src="/cap_biru.png" alt="Paid Stamp" width={350} height={350} className="transform -rotate-12 opacity-90 drop-shadow-xl animate-in zoom-in-50 duration-200" />
+                <Image src="/cap_biru.png" alt="Paid Stamp" width={350} height={350} className="transform -rotate-12 opacity-10 drop-shadow-xl animate-in zoom-in-50 duration-200" />
               </div>
             )}
 
@@ -383,10 +382,10 @@ function CustomerOrderContent() {
             
             {/* dark receipt for cashless on the left */}
             <div className="relative bg-[#111111]/90 text-[#ffc55a] w-[450px] p-8 rounded-2xl shadow-2xl border-2 border-[#ffc55a]/40 backdrop-blur-md">
-              {/* huge white stamp image overlay when paid */}
+              {/* huge subtle white stamp image overlay when paid */}
               {isPaid && (
                 <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none overflow-visible">
-                  <Image src="/cap_putih.png" alt="Paid Stamp" width={350} height={350} className="transform -rotate-12 opacity-90 drop-shadow-2xl animate-in zoom-in-50 duration-200" />
+                  <Image src="/cap_putih.png" alt="Paid Stamp" width={350} height={350} className="transform -rotate-12 opacity-10 drop-shadow-2xl animate-in zoom-in-50 duration-200" />
                 </div>
               )}
 
@@ -707,14 +706,11 @@ function CustomerOrderContent() {
     <>
       {viewContent}
       
-      {/* global success popup overlay */}
+      {/* global success popup overlay (minimalist typographic design) */}
       {orderSuccess && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center font-serif animate-in fade-in duration-200">
           <div className="bg-[#ffc55a] text-[#00215e] p-10 rounded-3xl w-[450px] shadow-2xl flex flex-col items-center transform transition-all animate-in zoom-in-95 duration-300">
-            <div className="w-24 h-24 bg-[#00215e] rounded-full flex items-center justify-center mb-6 shadow-inner">
-              <CheckCircle className="w-12 h-12 text-[#ffc55a]" />
-            </div>
-            <h2 className="text-3xl font-extrabold tracking-widest mb-4">SUCCESS!</h2>
+            <h2 className="text-4xl font-extrabold tracking-widest mb-4 uppercase">SUCCESS</h2>
             <p className="text-center font-bold tracking-wide text-sm opacity-90 mb-8">
               {orderSuccess === 'UNPAID' && `Order placed for Table ${selectedTable}! You can add more items to your table session anytime.`}
               {orderSuccess === 'CASH' && 'Payment request confirmed! Please proceed to the cashier to complete payment.'}
@@ -744,7 +740,6 @@ function CustomerOrderContent() {
   );
 }
 
-// export the wrapper component which provides suspense boundary for useSearchParams
 export default function CustomerOrderPage() {
   return (
     <Suspense fallback={<div className="w-screen h-screen bg-black flex items-center justify-center text-[#ffc55a] font-serif tracking-widest">LOADING...</div>}>
