@@ -35,7 +35,6 @@ interface CheckoutSession {
   subtotal: number;
   tax: number;
   total: number;
-  isTableBill: boolean;
 }
 
 function CustomerOrderContent() {
@@ -223,11 +222,6 @@ function CustomerOrderContent() {
   const tax = subtotal * 0.1;
   const totalPrice = subtotal + tax;
 
-  // calculate active session totals if paying active table bill directly
-  const activeOrdersSubtotal = activeOrders.reduce((sum, item) => sum + item.subtotal, 0);
-  const activeOrdersTax = activeOrdersSubtotal * 0.1;
-  const activeOrdersTotalPrice = activeOrdersSubtotal + activeOrdersTax;
-
   // unique random qr code value generator per transaction
   const qrPaymentData = `restolink-qr-${currentNota || Date.now()}-tbl${selectedTable}-amt${checkoutSession?.total || 0}`;
 
@@ -306,8 +300,7 @@ function CustomerOrderContent() {
                }),
                subtotal: subtotal,
                tax: tax,
-               total: totalPrice,
-               isTableBill: false // flags that this is just a direct cart payment, not clearing the table
+               total: totalPrice
              });
 
              setModalState('NONE');
@@ -319,25 +312,11 @@ function CustomerOrderContent() {
         } else {
           alert(result.pesan || 'Failed to process order. Please try again.');
         }
-      } else if (activeOrders.length > 0 && paymentMethod) {
-        // pay table bill flow: freezing accumulated table bill into the receipt snapshot
-        setCheckoutSession({
-            items: [...activeOrders],
-            subtotal: activeOrdersSubtotal,
-            tax: activeOrdersTax,
-            total: activeOrdersTotalPrice,
-            isTableBill: true // flags that completing this will wipe the table session
-        });
-
-        setModalState('NONE');
-        setReceiptType(paymentMethod);
-        setCashlessStep('RECEIPT');
-        setIsPaid(false);
       }
     } catch (err) {
       console.error('order submission error:', err);
       alert('System error. Please try again.');
-    } finally {
+    } fontally {
       setIsOrdering(false);
     }
   };
@@ -349,21 +328,7 @@ function CustomerOrderContent() {
     // ensure database is updated perfectly upon cashless qr scan completion to avoid unpaid bug on cashier dashboard
     if (method === 'CASHLESS') {
       try {
-        if (checkoutSession?.isTableBill) {
-          const uniqueNotas = Array.from(new Set(checkoutSession.items.map(item => item.noNota).filter(Boolean)));
-          for (const nota of uniqueNotas) {
-            await fetch('/api/pesanan', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                noNota: nota,
-                statusTagihan: 'PAID',
-                statusPesanan: 'DIPROSES',
-                metodePembayaran: 'QRIS'
-              })
-            });
-          }
-        } else if (checkoutSession?.items[0]?.noNota) {
+        if (checkoutSession?.items[0]?.noNota) {
           await fetch('/api/pesanan', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -376,23 +341,13 @@ function CustomerOrderContent() {
           });
         }
       } catch (err) {
-        console.error('Failed to sync cashless payment status:', err);
+        console.error('failed to sync cashless payment status:', err);
       }
     }
 
     // extended timeout to 3 seconds for better stamp visibility at 10% opacity
     setTimeout(() => {
       setOrderSuccess(method);
-
-      // only wipe the active session if they were paying the entire accumulated table bill
-      if (checkoutSession?.isTableBill) {
-         setActiveOrders([]);
-         if (typeof window !== 'undefined') {
-            sessionStorage.removeItem(`activeOrders_tbl_${selectedTable}`);
-            sessionStorage.removeItem('customerName');
-            sessionStorage.removeItem('isNameLocked');
-         }
-      }
     }, 3000);
   };
 
@@ -407,27 +362,8 @@ function CustomerOrderContent() {
     setCashlessStep('RECEIPT');
     setIsPaid(false);
     setOrderSuccess(null);
-
-    // logically route the user based on what they just did
-    if (checkoutSession?.isTableBill || activeOrders.length === 0) {
-       setCustomerName('');
-       setIsNameLocked(false);
-       setShowWelcome(true); // cleanly back to landing page for new customer
-    } else {
-       setShowWelcome(false); // smoothly back to menu since they still have active pay later orders
-    }
-
     setCheckoutSession(null);
-  };
-
-  const continueOrderingSession = () => {
-    setOrderSuccess(null);
-    setReceiptType(null);
-    setCashlessStep('RECEIPT');
-    setModalState('NONE');
-    setCart([]);
-    setCheckoutSession(null);
-    setShowWelcome(true); // returns customer straight to welcome screen safely saving their locked name session
+    setShowWelcome(true);
   };
 
   const handleCategoryClick = (category: 'FOOD' | 'DRINKS') => {
@@ -909,19 +845,6 @@ function CustomerOrderContent() {
                      ORDER
                    </button>
                 </div>
-              ) : activeOrders.length > 0 ? (
-                <div className="bg-[#ffc55a] text-[#00215e] p-5 rounded-xl flex justify-between items-center shadow-[0_0_30px_rgba(255,197,90,0.2)]">
-                   <div>
-                     <p className="text-[10px] font-bold tracking-widest">Table Session Bill</p>
-                     <p className="text-base font-bold tracking-widest mt-1">Rp. {activeOrdersTotalPrice.toLocaleString('id-ID')}</p>
-                   </div>
-                   <button
-                    onClick={() => setModalState('METHOD')}
-                    className="bg-[#00215e] text-[#ffc55a] px-5 py-2 rounded-lg text-xs font-bold tracking-widest hover:opacity-90 transition-opacity shadow-lg uppercase"
-                   >
-                     PAY TABLE BILL
-                   </button>
-                </div>
               ) : (
                 <div className="bg-[#ffc55a]/50 text-[#00215e] p-5 rounded-xl flex justify-between items-center opacity-60">
                    <div>
@@ -962,22 +885,13 @@ function CustomerOrderContent() {
               {orderSuccess === 'CASHLESS' && 'Payment complete! Your order is now being processed. Enjoy your meal.'}
             </p>
 
-            {orderSuccess === 'UNPAID' ? (
-              <button
-                onClick={continueOrderingSession}
-                className="w-full bg-[#00215e] text-[#ffc55a] py-4 rounded-xl font-bold tracking-widest hover:opacity-90 shadow-lg transition-opacity flex items-center justify-center space-x-2"
-              >
-                <span>BACK TO HOME</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            ) : (
-              <button
-                onClick={resetFlow}
-                className="w-full bg-[#00215e] text-[#ffc55a] py-4 rounded-xl font-bold tracking-widest hover:opacity-90 shadow-lg transition-opacity"
-              >
-                {checkoutSession?.isTableBill || activeOrders.length === 0 ? 'BACK TO HOME' : 'BACK TO MENU'}
-              </button>
-            )}
+            <button
+              onClick={resetFlow}
+              className="w-full bg-[#00215e] text-[#ffc55a] py-4 rounded-xl font-bold tracking-widest hover:opacity-90 shadow-lg transition-opacity flex items-center justify-center space-x-2"
+            >
+              <span>BACK TO HOME</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
           </div>
         </div>
       )}
