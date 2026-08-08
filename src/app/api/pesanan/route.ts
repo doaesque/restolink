@@ -103,10 +103,12 @@ export async function POST(req: Request) {
 
     // 4. if payment method is direct cashless (paid), generate payment record
     if (statusTagihan === 'PAID' && metodePembayaran) {
+      // map generic payment methods to database-friendly enum values
+      const mappedMetode = metodePembayaran === 'CASHLESS' ? 'QRIS' : (metodePembayaran === 'CASH' ? 'TUNAI' : metodePembayaran);
       await prisma.pembayaran.create({
         data: {
           totalBayar: totalPajak,
-          metodePembayaran: metodePembayaran,
+          metodePembayaran: mappedMetode,
           noNota: newPesanan.noNota,
           idPegawai: assignedPegawaiId
         }
@@ -139,16 +141,37 @@ export async function PUT(req: Request) {
       include: { detailPesanan: true }
     });
 
+    // if order is marked as done, check and release table if no other active orders exist
+    if (statusTagihan === 'DONE') {
+      try {
+        const activeOrdersCount = await prisma.pesanan.count({
+          where: {
+            noMeja: pesanan.noMeja,
+            statusTagihan: { not: 'DONE' }
+          }
+        });
+        if (activeOrdersCount === 0) {
+          await prisma.meja.update({
+            where: { noMeja: pesanan.noMeja },
+            data: { status: 'TERSEDIA' }
+          });
+        }
+      } catch (e) {
+        console.warn('table release update bypassed:', e);
+      }
+    }
+
     // if status changed to paid at cashier, record it into payment db
     if (statusTagihan === 'PAID' && metodePembayaran) {
       const existingPayment = await prisma.pembayaran.findUnique({ where: { noNota } });
       if (!existingPayment) {
-        const totalSubtotal = pesanan.detailPesanan.reduce((sum, d) => sum + d.subtotal, 0);
+        const totalSubtotal = pesanan.detailPesanan.reduce((sum: number, d: any) => sum + d.subtotal, 0);
         const totalBayar = totalSubtotal + (totalSubtotal * 0.1);
+        const mappedMetode = metodePembayaran === 'CASHLESS' ? 'QRIS' : (metodePembayaran === 'CASH' ? 'TUNAI' : metodePembayaran);
         await prisma.pembayaran.create({
           data: {
             totalBayar,
-            metodePembayaran,
+            metodePembayaran: mappedMetode,
             noNota,
             idPegawai: idPegawai || 'KASIR-001'
           }
@@ -186,6 +209,26 @@ export async function PATCH(request: Request) {
       where: { noNota },
       data: updateData
     });
+
+    // if order is marked as done, check and release table if no other active orders exist
+    if (statusTagihan === 'DONE') {
+      try {
+        const activeOrdersCount = await prisma.pesanan.count({
+          where: {
+            noMeja: updatedOrder.noMeja,
+            statusTagihan: { not: 'DONE' }
+          }
+        });
+        if (activeOrdersCount === 0) {
+          await prisma.meja.update({
+            where: { noMeja: updatedOrder.noMeja },
+            data: { status: 'TERSEDIA' }
+          });
+        }
+      } catch (e) {
+        console.warn('table release update bypassed:', e);
+      }
+    }
 
     return NextResponse.json({ sukses: true, data: updatedOrder });
   } catch (error: any) {

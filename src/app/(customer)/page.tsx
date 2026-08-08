@@ -27,6 +27,7 @@ interface ActiveOrderItem {
   namaMenu: string;
   qty: number;
   subtotal: number;
+  noNota?: string; // added to track invoice numbers for table billing sync
 }
 
 interface CheckoutSession {
@@ -112,6 +113,22 @@ function CustomerOrderContent() {
 
         setTables(fetchedTables);
 
+        // check if current active table is marked as TERSEDIA (cleared by cashier)
+        if (selectedTable) {
+          const currentTbl = fetchedTables.find((t) => t.noMeja.toString() === selectedTable);
+          if (currentTbl && currentTbl.status === 'TERSEDIA') {
+             // unlock name and clear active session smoothly
+             setActiveOrders([]);
+             setIsNameLocked(false);
+             setCustomerName('');
+             if (typeof window !== 'undefined') {
+                localStorage.removeItem(`activeOrders_tbl_${selectedTable}`);
+                localStorage.removeItem('customerName');
+                localStorage.removeItem('isNameLocked');
+             }
+          }
+        }
+
         // auto redirect to random available table if visiting root
         if (!tableParam) {
           const available = fetchedTables.filter((t) => t.status === 'TERSEDIA');
@@ -124,9 +141,14 @@ function CustomerOrderContent() {
         console.error('failed to fetch tables:', err);
       }
     }
+
     fetchTables();
+
+    // poll table status every 5 seconds to detect if cashier has marked orders as done
+    const interval = setInterval(fetchTables, 5000);
+    return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tableParam, selectedTable, router]);
 
   // initialize selected table from url if exists
   useEffect(() => {
@@ -235,7 +257,7 @@ function CustomerOrderContent() {
           jumlahOrang: 2,
           noMeja: parseInt(selectedTable, 10) || 1,
           statusTagihan: statusTagihan,
-          metodePembayaran: paymentMethod,
+          metodePembayaran: paymentMethod === 'CASHLESS' ? 'QRIS' : (paymentMethod === 'CASH' ? 'TUNAI' : paymentMethod),
           items: cart.map(item => {
             const m = menus.find(x => x.id === item.id)!;
             return {
@@ -261,9 +283,9 @@ function CustomerOrderContent() {
           if (statusTagihan === 'UNPAID' && !paymentMethod) {
             const newItems: ActiveOrderItem[] = cart.map(item => {
               const m = menus.find(x => x.id === item.id)!;
-              return { namaMenu: m.namaMenu, qty: item.qty, subtotal: m.harga * item.qty };
+              return { namaMenu: m.namaMenu, qty: item.qty, subtotal: m.harga * item.qty, noNota: generatedNota };
             });
-            
+
             setActiveOrders(prev => {
               const updated = [...prev, ...newItems];
               if (typeof window !== 'undefined') {
@@ -275,12 +297,12 @@ function CustomerOrderContent() {
             setModalState('NONE');
             setOrderSuccess('UNPAID');
             setCart([]);
-          } else if (paymentMethod) { 
+          } else if (paymentMethod) {
              // PAY NOW flow: freeze the cart items into a checkout session to protect against activeOrders collisions
              setCheckoutSession({
                items: cart.map(item => {
                   const m = menus.find(x => x.id === item.id)!;
-                  return { namaMenu: m.namaMenu, qty: item.qty, subtotal: m.harga * item.qty };
+                  return { namaMenu: m.namaMenu, qty: item.qty, subtotal: m.harga * item.qty, noNota: generatedNota };
                }),
                subtotal: subtotal,
                tax: tax,
@@ -321,8 +343,43 @@ function CustomerOrderContent() {
   };
 
   // handle finish payment flow (shows stamp then opens success modal)
-  const completePayment = (method: 'CASH' | 'CASHLESS') => {
+  const completePayment = async (method: 'CASH' | 'CASHLESS') => {
     setIsPaid(true);
+
+    // ensure database is updated perfectly upon cashless qr scan completion to avoid unpaid bug on cashier dashboard
+    if (method === 'CASHLESS') {
+      try {
+        if (checkoutSession?.isTableBill) {
+          const uniqueNotas = Array.from(new Set(checkoutSession.items.map(item => item.noNota).filter(Boolean)));
+          for (const nota of uniqueNotas) {
+            await fetch('/api/pesanan', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                noNota: nota,
+                statusTagihan: 'PAID',
+                statusPesanan: 'DIPROSES',
+                metodePembayaran: 'QRIS'
+              })
+            });
+          }
+        } else if (checkoutSession?.items[0]?.noNota) {
+          await fetch('/api/pesanan', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              noNota: checkoutSession.items[0].noNota,
+              statusTagihan: 'PAID',
+              statusPesanan: 'DIPROSES',
+              metodePembayaran: 'QRIS'
+            })
+          });
+        }
+      } catch (err) {
+        console.error('Failed to sync cashless payment status:', err);
+      }
+    }
+
     // extended timeout to 3 seconds for better stamp visibility at 10% opacity
     setTimeout(() => {
       setOrderSuccess(method);
@@ -370,6 +427,7 @@ function CustomerOrderContent() {
     setModalState('NONE');
     setCart([]);
     setCheckoutSession(null);
+    setShowWelcome(true); // returns customer straight to welcome screen safely saving their locked name session
   };
 
   const handleCategoryClick = (category: 'FOOD' | 'DRINKS') => {
@@ -619,8 +677,8 @@ function CustomerOrderContent() {
                 <div className="flex flex-col space-y-4">
                   {/* unpaid intent for cash pay, so it shows up at cashier for manual fulfillment */}
                   <button onClick={() => handleOrder('UNPAID', 'CASH')} disabled={isOrdering} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">CASH</button>
-                  {/* paid intent for cashless, instantly marks as processed */}
-                  <button onClick={() => handleOrder('PAID', 'CASHLESS')} disabled={isOrdering} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">CASHLESS</button>
+                  {/* initially set intent as UNPAID until customer strictly finishes scanning QRIS where completePayment will automatically PATCH this to PAID */}
+                  <button onClick={() => handleOrder('UNPAID', 'CASHLESS')} disabled={isOrdering} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">CASHLESS</button>
                 </div>
               </div>
             )}
@@ -763,7 +821,7 @@ function CustomerOrderContent() {
                         <div className="flex-1 pr-2 flex flex-col justify-center">
                           <h3 className="text-[#ffc55a] text-sm font-bold tracking-widest uppercase leading-snug">{menu.namaMenu}</h3>
                           <p className="text-[#ffc55a]/70 text-xs tracking-widest font-semibold mt-1">Rp. {menu.harga.toLocaleString('id-ID')}</p>
-                          
+
                           {/* display ingredients here directly below menu info instead of cart */}
                           {menu.komposisiString && (
                             <p className="text-[9px] text-[#ffc55a]/50 italic mt-1.5 leading-tight">
@@ -899,7 +957,7 @@ function CustomerOrderContent() {
           <div className="bg-[#ffc55a] text-[#00215e] p-10 rounded-3xl w-[450px] shadow-2xl flex flex-col items-center transform transition-all animate-in zoom-in-95 duration-300">
             <h2 className="text-4xl font-extrabold tracking-widest mb-4 uppercase">SUCCESS</h2>
             <p className="text-center font-bold tracking-wide text-sm opacity-90 mb-8">
-              {orderSuccess === 'UNPAID' && `Order placed for Table ${selectedTable}! You can add more items or pay later at the cashier anytime.`}
+              {orderSuccess === 'UNPAID' && `Order placed for Table ${selectedTable}! You can pay later at the cashier anytime.`}
               {orderSuccess === 'CASH' && 'Payment request confirmed! Please proceed to the cashier to complete payment.'}
               {orderSuccess === 'CASHLESS' && 'Payment complete! Your order is now being processed. Enjoy your meal.'}
             </p>
@@ -909,7 +967,7 @@ function CustomerOrderContent() {
                 onClick={continueOrderingSession}
                 className="w-full bg-[#00215e] text-[#ffc55a] py-4 rounded-xl font-bold tracking-widest hover:opacity-90 shadow-lg transition-opacity flex items-center justify-center space-x-2"
               >
-                <span>ADD MORE ITEMS</span>
+                <span>BACK TO HOME</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
             ) : (
