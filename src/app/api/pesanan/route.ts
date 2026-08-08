@@ -41,6 +41,22 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { namaPelanggan, idPegawai, jumlahOrang, noMeja, items, statusTagihan, metodePembayaran } = body;
 
+    // validate pegawai id or fallback to existing pegawai in db to prevent foreign key failure
+    let assignedPegawaiId = idPegawai;
+    if (assignedPegawaiId) {
+      const existingPegawai = await prisma.pegawai.findUnique({
+        where: { id: assignedPegawaiId }
+      });
+      if (!existingPegawai) {
+        assignedPegawaiId = null;
+      }
+    }
+
+    if (!assignedPegawaiId) {
+      const firstPegawai = await prisma.pegawai.findFirst();
+      assignedPegawaiId = firstPegawai ? firstPegawai.id : 'KASIR-001';
+    }
+
     // 1. record or create new customer data
     const pelanggan = await prisma.pelanggan.create({
       data: {
@@ -49,36 +65,41 @@ export async function POST(req: Request) {
     });
 
     // calculate total price and tax
-    const totalSubtotal = items.reduce((sum: number, item: any) => sum + item.subtotal, 0);
+    const totalSubtotal = (items || []).reduce((sum: number, item: any) => sum + (item.subtotal || 0), 0);
     const tax = totalSubtotal * 0.1;
     const totalPajak = totalSubtotal + tax;
 
-    // 2. create new order record including notes
+    const parsedNoMeja = parseInt(noMeja) || 1;
+
+    // 2. create new order record (removed catatan mapped item to match prisma schema)
     const newPesanan = await prisma.pesanan.create({
       data: {
-        jumlahOrang: jumlahOrang || 1,
+        jumlahOrang: parseInt(jumlahOrang) || 1,
         // if immediately paid (cashless), kitchen status goes to processing directly
         statusPesanan: statusTagihan === 'PAID' ? 'DIPROSES' : 'MENUNGGU',
         statusTagihan: statusTagihan || 'UNPAID',
         idPelanggan: pelanggan.id,
-        idPegawai: idPegawai || 'KASIR-001',
-        noMeja: noMeja || 1,
+        idPegawai: assignedPegawaiId,
+        noMeja: parsedNoMeja,
         detailPesanan: {
-          create: items.map((item: any) => ({
-            jumlahPesanan: item.jumlahPesanan,
-            subtotal: item.subtotal,
-            idMenu: item.idMenu,
-            catatan: item.catatan || null // added mapped item note support
+          create: (items || []).map((item: any) => ({
+            jumlahPesanan: parseInt(item.jumlahPesanan) || 1,
+            subtotal: parseFloat(item.subtotal) || 0,
+            idMenu: item.idMenu
           }))
         }
       }
     });
 
     // 3. update table status to occupied (terisi) since an order is placed
-    await prisma.meja.update({
-      where: { noMeja: noMeja },
-      data: { status: 'TERISI' }
-    });
+    try {
+      await prisma.meja.update({
+        where: { noMeja: parsedNoMeja },
+        data: { status: 'TERISI' }
+      });
+    } catch (e) {
+      console.warn('table status update bypassed:', e);
+    }
 
     // 4. if payment method is direct cashless (paid), generate payment record
     if (statusTagihan === 'PAID' && metodePembayaran) {
@@ -87,7 +108,7 @@ export async function POST(req: Request) {
           totalBayar: totalPajak,
           metodePembayaran: metodePembayaran,
           noNota: newPesanan.noNota,
-          idPegawai: idPegawai || 'KASIR-001'
+          idPegawai: assignedPegawaiId
         }
       });
     }
@@ -148,9 +169,13 @@ export async function PUT(req: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { noNota, statusTagihan } = body;
+    const { noNota, statusTagihan, statusPesanan } = body;
 
-    if (!noNota || !statusTagihan) {
+    const updateData: any = {};
+    if (statusTagihan) updateData.statusTagihan = statusTagihan;
+    if (statusPesanan) updateData.statusPesanan = statusPesanan;
+
+    if (!noNota || Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { sukses: false, pesan: 'Incomplete data payload.' },
         { status: 400 }
@@ -159,7 +184,7 @@ export async function PATCH(request: Request) {
 
     const updatedOrder = await prisma.pesanan.update({
       where: { noNota },
-      data: { statusTagihan }
+      data: updateData
     });
 
     return NextResponse.json({ sukses: true, data: updatedOrder });
