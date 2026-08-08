@@ -10,6 +10,7 @@ interface DetailPesanan {
   idDetail: string;
   jumlahPesanan: number;
   subtotal: number;
+  catatan?: string;
   menu: { namaMenu: string };
 }
 
@@ -64,14 +65,22 @@ export default function KasirPage() {
 
   useEffect(() => {
     // retrieve strictly logged in cashier info from localstorage (covering old and new keys to prevent null constraint errors)
+    // enforce role security to prevent unauthorized access
     if (typeof window !== 'undefined') {
+      const storedRole = localStorage.getItem('employeeRole') || localStorage.getItem('pegawai_role') || '';
+
+      if (storedRole !== 'KASIR' && storedRole !== 'PEMILIK') {
+        router.push('/employee/login');
+        return;
+      }
+
       const storedId = localStorage.getItem('pegawai_id') || localStorage.getItem('idPegawai') || localStorage.getItem('employeeId') || '';
       const storedName = localStorage.getItem('pegawai_nama') || localStorage.getItem('namaPegawai') || localStorage.getItem('employeeName') || 'Unknown Cashier';
 
       setCashierId(storedId);
       setCashierName(storedName);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     // auto-polling feature setup
@@ -440,7 +449,11 @@ export default function KasirPage() {
                      {selectedOrder.detailPesanan.map((item) => (
                         <div key={item.idDetail} className="flex justify-between items-start">
                           <span className="w-8">{item.jumlahPesanan}</span>
-                          <span className="flex-1 pr-4">{item.menu.namaMenu}</span>
+                          <span className="flex-1 pr-4">
+                            {item.menu.namaMenu}
+                            {/* display optional note for clarity on receipt */}
+                            {item.catatan && <span className="block text-xs font-normal text-[#00215e]/70 italic mt-0.5 print:text-gray-700">- {item.catatan}</span>}
+                          </span>
                           <span>Rp. {item.subtotal.toLocaleString('id-ID')}</span>
                         </div>
                      ))}
