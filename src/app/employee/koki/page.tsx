@@ -97,7 +97,14 @@ export default function KokiPage() {
   async function fetchOrders(showLoading = true) {
     if (showLoading) setLoading(true);
     try {
-      const res = await fetch('/api/pesanan');
+      // strictly bypassing cache to get real-time kitchen orders
+      const res = await fetch('/api/pesanan', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const data = await res.json();
       if (data.sukses || data.data) {
         const rawData = data.data || data;
@@ -114,7 +121,14 @@ export default function KokiPage() {
   async function fetchInventory(showLoading = true) {
     if (showLoading) setLoading(true);
     try {
-      const res = await fetch('/api/bahan-baku');
+      // strictly bypassing cache to get real-time raw materials stock
+      const res = await fetch('/api/bahan-baku', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const data = await res.json();
       if (data.sukses) setListBahan(data.data);
     } catch (err) {
