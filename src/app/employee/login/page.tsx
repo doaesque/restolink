@@ -58,7 +58,7 @@ export default function EmployeeLoginPage() {
   return (
     <div className="w-screen h-screen bg-gradient-to-br from-[#00215e] to-[#2c4e80] flex items-center justify-center font-sans">
       <div className="flex flex-col items-center w-full max-w-[400px] px-4">
-        
+
         {/* logo and title representation */}
         <div className="flex flex-col items-center mb-8">
           <Image
@@ -86,7 +86,7 @@ export default function EmployeeLoginPage() {
           )}
 
           <form onSubmit={handleLogin} className="w-full space-y-5 flex flex-col items-center">
-            
+
             {/* username field */}
             <div className="w-full relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#2c4e80]">
