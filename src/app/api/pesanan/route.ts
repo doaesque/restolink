@@ -118,3 +118,24 @@ export async function PUT(req: Request) {
     return NextResponse.json({ sukses: false, pesan: 'gagal mengupdate pesanan' }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { noNota, statusTagihan } = body;
+
+    if (!noNota || !statusTagihan) {
+      return NextResponse.json({ sukses: false, pesan: 'incomplete data payload' }, { status: 400 });
+    }
+
+    const updatedOrder = await prisma.pesanan.update({
+      where: { noNota },
+      data: { statusTagihan }
+    });
+
+    return NextResponse.json({ sukses: true, data: updatedOrder });
+  } catch (error: any) {
+    console.error('api pesanan update error:', error);
+    return NextResponse.json({ sukses: false, pesan: error.message }, { status: 500 });
+  }
+}
