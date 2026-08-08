@@ -50,6 +50,7 @@ model Menu {
   subKategori    String    // options: daging, seafood, coffee, tea, etc.
   harga          Float
   image          String?   // optional image path for the menu item
+  status         String    @default("TERSEDIA") // options: tersedia, habis
 
   // relations
   detailPesanan  DetailPesanan[]

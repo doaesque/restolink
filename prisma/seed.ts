@@ -50,48 +50,48 @@ async function main() {
   await prisma.menu.createMany({
     data: [
       // food items - daging
-      { namaMenu: 'WAGYU A5 FILLET MIGNON WITH TRUFFLE SHAVINGS', kategori: 'FOOD', subKategori: 'Daging', harga: 2000000, image: '/makanan_wagyu.png' },
-      { namaMenu: '45-DAY DRY-AGED T-BONE STEAK', kategori: 'FOOD', subKategori: 'Daging', harga: 2800000, image: '/makanan_steak.png' },
-      { namaMenu: '24K GOLD LEAF TOMAHAWK RIBEYE', kategori: 'FOOD', subKategori: 'Daging', harga: 5000000, image: '/makanan_ribeye.png' },
-      { namaMenu: 'HERB-CRUSTED NEW ZEALAND LAMB RACK', kategori: 'FOOD', subKategori: 'Daging', harga: 1200000, image: null },
-      { namaMenu: 'PAN-ROASTED DUCK BREAST WITH CHERRY GLAZE', kategori: 'FOOD', subKategori: 'Daging', harga: 950000, image: null },
+      { namaMenu: 'WAGYU A5 FILLET MIGNON WITH TRUFFLE SHAVINGS', kategori: 'FOOD', subKategori: 'Daging', harga: 2000000, image: '/makanan_wagyu.png', status: 'TERSEDIA' },
+      { namaMenu: '45-DAY DRY-AGED T-BONE STEAK', kategori: 'FOOD', subKategori: 'Daging', harga: 2800000, image: '/makanan_steak.png', status: 'TERSEDIA' },
+      { namaMenu: '24K GOLD LEAF TOMAHAWK RIBEYE', kategori: 'FOOD', subKategori: 'Daging', harga: 5000000, image: '/makanan_ribeye.png', status: 'TERSEDIA' },
+      { namaMenu: 'HERB-CRUSTED NEW ZEALAND LAMB RACK', kategori: 'FOOD', subKategori: 'Daging', harga: 1200000, image: null, status: 'TERSEDIA' },
+      { namaMenu: 'PAN-ROASTED DUCK BREAST WITH CHERRY GLAZE', kategori: 'FOOD', subKategori: 'Daging', harga: 950000, image: null, status: 'TERSEDIA' },
 
       // food items - seafood
-      { namaMenu: 'LOBSTER THERMIDOR WITH SAFFRON BUTTER', kategori: 'FOOD', subKategori: 'Seafood', harga: 3200000, image: null },
-      { namaMenu: 'PAN-SEARED HOKKAIDO SCALLOPS WITH CAVIAR', kategori: 'FOOD', subKategori: 'Seafood', harga: 1500000, image: null },
-      { namaMenu: 'GRILLED BLACK COD WITH MISO GLAZE', kategori: 'FOOD', subKategori: 'Seafood', harga: 1800000, image: null },
-      { namaMenu: 'BUTTER-POACHED ALASKAN KING CRAB LEGS', kategori: 'FOOD', subKategori: 'Seafood', harga: 2500000, image: null },
+      { namaMenu: 'LOBSTER THERMIDOR WITH SAFFRON BUTTER', kategori: 'FOOD', subKategori: 'Seafood', harga: 3200000, image: null, status: 'TERSEDIA' },
+      { namaMenu: 'PAN-SEARED HOKKAIDO SCALLOPS WITH CAVIAR', kategori: 'FOOD', subKategori: 'Seafood', harga: 1500000, image: null, status: 'TERSEDIA' },
+      { namaMenu: 'GRILLED BLACK COD WITH MISO GLAZE', kategori: 'FOOD', subKategori: 'Seafood', harga: 1800000, image: null, status: 'TERSEDIA' },
+      { namaMenu: 'BUTTER-POACHED ALASKAN KING CRAB LEGS', kategori: 'FOOD', subKategori: 'Seafood', harga: 2500000, image: null, status: 'TERSEDIA' },
 
       // food items - pasta
-      { namaMenu: 'TRUFFLE RISOTTO WITH PARMESAN CRISP', kategori: 'FOOD', subKategori: 'Pasta', harga: 850000, image: null },
-      { namaMenu: 'LOBSTER LINGUINE WITH UNI BUTTER', kategori: 'FOOD', subKategori: 'Pasta', harga: 1100000, image: null },
-      { namaMenu: 'HAND-ROLLED GNOCCHI WITH WHITE TRUFFLE', kategori: 'FOOD', subKategori: 'Pasta', harga: 900000, image: null },
+      { namaMenu: 'TRUFFLE RISOTTO WITH PARMESAN CRISP', kategori: 'FOOD', subKategori: 'Pasta', harga: 850000, image: null, status: 'TERSEDIA' },
+      { namaMenu: 'LOBSTER LINGUINE WITH UNI BUTTER', kategori: 'FOOD', subKategori: 'Pasta', harga: 1100000, image: null, status: 'TERSEDIA' },
+      { namaMenu: 'HAND-ROLLED GNOCCHI WITH WHITE TRUFFLE', kategori: 'FOOD', subKategori: 'Pasta', harga: 900000, image: null, status: 'TERSEDIA' },
 
       // food items - dessert
-      { namaMenu: 'MADAGASCAR VANILLA CRÈME BRÛLÉE', kategori: 'FOOD', subKategori: 'Dessert', harga: 250000, image: null },
-      { namaMenu: '24K GOLD LEAF CHOCOLATE SPHERE', kategori: 'FOOD', subKategori: 'Dessert', harga: 450000, image: null },
-      { namaMenu: 'CLASSIC ITALIAN TIRAMISU WITH KAHLUA', kategori: 'FOOD', subKategori: 'Dessert', harga: 300000, image: null },
+      { namaMenu: 'MADAGASCAR VANILLA CRÈME BRÛLÉE', kategori: 'FOOD', subKategori: 'Dessert', harga: 250000, image: null, status: 'TERSEDIA' },
+      { namaMenu: '24K GOLD LEAF CHOCOLATE SPHERE', kategori: 'FOOD', subKategori: 'Dessert', harga: 450000, image: null, status: 'TERSEDIA' },
+      { namaMenu: 'CLASSIC ITALIAN TIRAMISU WITH KAHLUA', kategori: 'FOOD', subKategori: 'Dessert', harga: 300000, image: null, status: 'TERSEDIA' },
 
       // drink items - coffee
-      { namaMenu: '24K GOLD DUST ESPRESSO MARTINI', kategori: 'DRINKS', subKategori: 'Coffee', harga: 450000, image: '/minuman_martini.png' },
-      { namaMenu: 'BLUE MOUNTAIN HAND-POURED DRIP COFFEE', kategori: 'DRINKS', subKategori: 'Coffee', harga: 250000, image: null },
-      { namaMenu: 'NITRO COLD BREW WITH SWEET FOAM', kategori: 'DRINKS', subKategori: 'Coffee', harga: 180000, image: null },
+      { namaMenu: '24K GOLD DUST ESPRESSO MARTINI', kategori: 'DRINKS', subKategori: 'Coffee', harga: 450000, image: '/minuman_martini.png', status: 'TERSEDIA' },
+      { namaMenu: 'BLUE MOUNTAIN HAND-POURED DRIP COFFEE', kategori: 'DRINKS', subKategori: 'Coffee', harga: 250000, image: null, status: 'TERSEDIA' },
+      { namaMenu: 'NITRO COLD BREW WITH SWEET FOAM', kategori: 'DRINKS', subKategori: 'Coffee', harga: 180000, image: null, status: 'TERSEDIA' },
 
       // drink items - tea
-      { namaMenu: 'EARL GREY IMPERIAL FULL LEAF TEA', kategori: 'DRINKS', subKategori: 'Tea', harga: 180000, image: null },
-      { namaMenu: 'JAPANESE MATCHA CEREMONY SET', kategori: 'DRINKS', subKategori: 'Tea', harga: 220000, image: null },
+      { namaMenu: 'EARL GREY IMPERIAL FULL LEAF TEA', kategori: 'DRINKS', subKategori: 'Tea', harga: 180000, image: null, status: 'TERSEDIA' },
+      { namaMenu: 'JAPANESE MATCHA CEREMONY SET', kategori: 'DRINKS', subKategori: 'Tea', harga: 220000, image: null, status: 'TERSEDIA' },
 
       // drink items - mocktail
-      { namaMenu: 'SMOKED ROSEMARY BERRY SMASH', kategori: 'DRINKS', subKategori: 'Mocktail', harga: 150000, image: null },
-      { namaMenu: 'CITRUS BASIL SPARKLING MOCKTAIL', kategori: 'DRINKS', subKategori: 'Mocktail', harga: 120000, image: null },
+      { namaMenu: 'SMOKED ROSEMARY BERRY SMASH', kategori: 'DRINKS', subKategori: 'Mocktail', harga: 150000, image: null, status: 'TERSEDIA' },
+      { namaMenu: 'CITRUS BASIL SPARKLING MOCKTAIL', kategori: 'DRINKS', subKategori: 'Mocktail', harga: 120000, image: null, status: 'TERSEDIA' },
 
       // drink items - cocktail
-      { namaMenu: 'TRUFFLE-INFUSED SMOKY OLD FASHIONED', kategori: 'DRINKS', subKategori: 'Cocktail', harga: 300000, image: '/minuman_bourbon.png' },
-      { namaMenu: 'VINTAGE DOM PÉRIGNON CHAMPAGNE', kategori: 'DRINKS', subKategori: 'Cocktail', harga: 7500000, image: null },
+      { namaMenu: 'TRUFFLE-INFUSED SMOKY OLD FASHIONED', kategori: 'DRINKS', subKategori: 'Cocktail', harga: 300000, image: '/minuman_bourbon.png', status: 'TERSEDIA' },
+      { namaMenu: 'VINTAGE DOM PÉRIGNON CHAMPAGNE', kategori: 'DRINKS', subKategori: 'Cocktail', harga: 7500000, image: null, status: 'TERSEDIA' },
 
       // drink items - other
-      { namaMenu: 'ARTESIAN CRYSTAL WATER', kategori: 'DRINKS', subKategori: 'Other', harga: 120000, image: '/minuman_crystal_water.png' },
-      { namaMenu: 'SPARKLING SAN PELLEGRINO MINERAL WATER', kategori: 'DRINKS', subKategori: 'Other', harga: 150000, image: null }
+      { namaMenu: 'ARTESIAN CRYSTAL WATER', kategori: 'DRINKS', subKategori: 'Other', harga: 120000, image: '/minuman_crystal_water.png', status: 'TERSEDIA' },
+      { namaMenu: 'SPARKLING SAN PELLEGRINO MINERAL WATER', kategori: 'DRINKS', subKategori: 'Other', harga: 150000, image: null, status: 'TERSEDIA' }
     ],
   });
 
@@ -100,35 +100,57 @@ async function main() {
     data: [
       { id: 'BB-01', namaBahan: 'A5 Japanese Wagyu', statusBahan: 'TERSEDIA' },
       { id: 'BB-02', namaBahan: 'Fresh Black Truffle', statusBahan: 'TERSEDIA' },
-      { id: 'BB-03', namaBahan: 'Saffron', statusBahan: 'HABIS' }, // updated name so text matching triggers out of stock for lobster
+      { id: 'BB-03', namaBahan: 'Saffron', statusBahan: 'HABIS' }, // empty stock for testing
       { id: 'BB-04', namaBahan: 'Artesian Water', statusBahan: 'TERSEDIA' },
       { id: 'BB-05', namaBahan: 'Alaskan King Crab', statusBahan: 'TERSEDIA' },
       { id: 'BB-06', namaBahan: 'Edible 24K Gold Leaf', statusBahan: 'TERSEDIA' },
-      { id: 'BB-07', namaBahan: 'Vintage Champagne Bottle', statusBahan: 'TERSEDIA' } // added champagne ingredient
+      { id: 'BB-07', namaBahan: 'Vintage Champagne Bottle', statusBahan: 'TERSEDIA' },
+      { id: 'BB-99', namaBahan: 'General Kitchen Stock', statusBahan: 'TERSEDIA' } // catch-all stock
     ],
   });
 
   console.log('linking menu with ingredients (komposisi)...');
   const menus = await prisma.menu.findMany();
+
+  // array to hold all our new compositions to insert
+  const komposisiData = [];
+
+  for (const menu of menus) {
+    // assign specific ingredients based on name
+    let assigned = false;
+
+    if (menu.namaMenu.includes('WAGYU')) {
+      komposisiData.push({ idMenu: menu.id, idBahan: 'BB-01' }, { idMenu: menu.id, idBahan: 'BB-02' });
+      assigned = true;
+    }
+    if (menu.namaMenu.includes('LOBSTER')) {
+      komposisiData.push({ idMenu: menu.id, idBahan: 'BB-03' });
+      assigned = true;
+    }
+    if (menu.namaMenu.includes('WATER')) {
+      komposisiData.push({ idMenu: menu.id, idBahan: 'BB-04' });
+      assigned = true;
+    }
+    if (menu.namaMenu.includes('CHAMPAGNE')) {
+      komposisiData.push({ idMenu: menu.id, idBahan: 'BB-07' });
+      assigned = true;
+    }
+
+    // if no specific ingredient was assigned, assign the general stock so it passes the strict requirement
+    if (!assigned) {
+      komposisiData.push({ idMenu: menu.id, idBahan: 'BB-99' });
+    }
+  }
+
+  // bulk insert all compositions
+  await prisma.komposisi.createMany({ data: komposisiData });
+
+  console.log('inserting dummy orders...');
   const wagyu = menus.find(m => m.namaMenu.includes('WAGYU'));
   const lobster = menus.find(m => m.namaMenu.includes('LOBSTER'));
   const water = menus.find(m => m.namaMenu.includes('WATER'));
   const champagne = menus.find(m => m.namaMenu.includes('CHAMPAGNE'));
 
-  // linking ingredients to their respective menus including champagne
-  if (wagyu && lobster && water && champagne) {
-    await prisma.komposisi.createMany({
-      data: [
-        { idMenu: wagyu.id, idBahan: 'BB-01' },
-        { idMenu: wagyu.id, idBahan: 'BB-02' },
-        { idMenu: lobster.id, idBahan: 'BB-03' },
-        { idMenu: water.id, idBahan: 'BB-04' },
-        { idMenu: champagne.id, idBahan: 'BB-07' } // now linked to bb-07
-      ]
-    });
-  }
-
-  console.log('inserting dummy orders...');
   if (wagyu && lobster && water && champagne) {
     // dummy order 1: completed and paid (cashless)
     const subtotal1 = (wagyu.harga * 2) + (water.harga * 2);
@@ -142,8 +164,8 @@ async function main() {
         pegawai: { connect: { id: 'KASIR-001' } },
         detailPesanan: {
           create: [
-            { menu: { connect: { id: wagyu.id } }, jumlahPesanan: 2, subtotal: wagyu.harga * 2, catatan: 'Medium rare please' }, // added dummy note
-            { menu: { connect: { id: water.id } }, jumlahPesanan: 2, subtotal: water.harga * 2, catatan: 'No ice' }               // added dummy note
+            { menu: { connect: { id: wagyu.id } }, jumlahPesanan: 2, subtotal: wagyu.harga * 2, catatan: 'Medium rare please' },
+            { menu: { connect: { id: water.id } }, jumlahPesanan: 2, subtotal: water.harga * 2, catatan: 'No ice' }
           ]
         },
         pembayaran: {
@@ -185,7 +207,7 @@ async function main() {
         pegawai: { connect: { id: 'PLYN-001' } },
         detailPesanan: {
           create: [
-            { menu: { connect: { id: water.id } }, jumlahPesanan: 2, subtotal: water.harga * 2, catatan: 'Extra ice' } // added dummy note
+            { menu: { connect: { id: water.id } }, jumlahPesanan: 2, subtotal: water.harga * 2, catatan: 'Extra ice' }
           ]
         }
       }
