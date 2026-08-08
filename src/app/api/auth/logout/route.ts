@@ -1,4 +1,3 @@
-
 // authentication api route for employee logout
 import { NextResponse } from 'next/server';
 

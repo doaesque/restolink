@@ -36,7 +36,7 @@ export async function GET() {
     });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'failed to fetch report data.' },
+      { sukses: false, pesan: 'Failed to fetch report data.' },
       { status: 500 }
     );
   }
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
     if (!idPegawai) {
       return NextResponse.json(
-        { sukses: false, pesan: 'employee id is required to generate a report.' },
+        { sukses: false, pesan: 'Employee ID is required to generate a report.' },
         { status: 400 }
       );
     }
@@ -80,12 +80,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       sukses: true,
-      pesan: 'report successfully generated.',
+      pesan: 'Report successfully generated.',
       data: laporanBaru
     });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'server error occurred while generating report.' },
+      { sukses: false, pesan: 'Server error occurred while generating report.' },
       { status: 500 }
     );
   }
