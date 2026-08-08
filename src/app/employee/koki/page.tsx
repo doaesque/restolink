@@ -42,7 +42,7 @@ export default function KokiPage() {
   const [loading, setLoading] = useState<boolean>(true);
 
   // dynamic chef details state
-  const [chefId, setChefId] = useState<string>(''); 
+  const [chefId, setChefId] = useState<string>('');
   const [chefName, setChefName] = useState<string>('');
 
   // custom modal state
@@ -57,7 +57,7 @@ export default function KokiPage() {
     if (typeof window !== 'undefined') {
       const storedId = localStorage.getItem('idPegawai') || localStorage.getItem('pegawai_id') || '';
       const storedName = localStorage.getItem('namaPegawai') || localStorage.getItem('pegawai_nama') || 'Unknown Chef';
-      
+
       setChefId(storedId);
       setChefName(storedName);
     }
@@ -72,7 +72,7 @@ export default function KokiPage() {
     } else if (view === 'inventory') {
       fetchInventory(true);
     }
-    
+
     return () => clearInterval(interval);
   }, [view]);
 
@@ -140,7 +140,7 @@ export default function KokiPage() {
           body: JSON.stringify({ noNota, statusPesanan: 'SIAP' }),
         });
         const data = await res.json();
-        
+
         if (data.sukses) {
           showModal('success', 'Order has been successfully marked as ready.');
           fetchOrders(false);
@@ -163,7 +163,7 @@ export default function KokiPage() {
           body: JSON.stringify({ noNota, statusPesanan: 'DIBATALKAN' }),
         });
         const data = await res.json();
-        
+
         if (data.sukses) {
           showModal('success', 'Order has been rejected and canceled.');
           fetchOrders(false);
@@ -218,12 +218,12 @@ export default function KokiPage() {
             {modal.type === 'success' && <CheckCircle2 className="w-16 h-16 text-green-400 mb-4" />}
             {modal.type === 'alert' && <AlertCircle className="w-16 h-16 text-[#fc4100] mb-4" />}
             {modal.type === 'confirm' && <AlertCircle className="w-16 h-16 text-[#ffc55a] mb-4" />}
-            
+
             <h3 className="text-white text-xl font-bold mb-2">
               {modal.type === 'success' ? 'Success' : modal.type === 'confirm' ? 'Confirmation' : 'Attention'}
             </h3>
             <p className="text-gray-200 mb-8">{modal.message}</p>
-            
+
             <div className="flex space-x-3 w-full">
               {modal.type === 'confirm' ? (
                 <>
@@ -268,7 +268,7 @@ export default function KokiPage() {
             <div className="bg-[#2c4e80] text-white text-xs font-bold tracking-widest mt-3 px-6 py-1.5 rounded-full shadow-md uppercase">
               Chef Portal
             </div>
-            
+
             {/* active chef profile display */}
             <div className="mt-4 flex items-center bg-[#00215e]/80 border border-[#ffc55a]/30 px-4 py-2 rounded-xl text-white text-sm shadow-inner">
               <User className="w-4 h-4 text-[#ffc55a] mr-2" />
@@ -299,31 +299,31 @@ export default function KokiPage() {
   return (
     <div className="w-screen h-screen flex bg-[#00215e] font-sans overflow-hidden">
       {renderModal()}
-      
+
       {/* sidebar matching cashier */}
       <div className="w-[280px] bg-[#00215e] flex flex-col items-center py-10 shrink-0 border-r border-[#2c4e80]">
         <Image src="/logo_emas.png" alt="Logo" width={100} height={100} />
         <h2 className="text-white font-extrabold text-4xl mt-6 mb-3 tracking-wider">Kitchen</h2>
-        
+
         {/* chef profile badge in sidebar */}
         <div className="mb-8 flex items-center bg-[#2c4e80]/60 border border-[#ffc55a]/20 px-3 py-1.5 rounded-lg text-xs text-white">
           <User className="w-3.5 h-3.5 text-[#ffc55a] mr-1.5 shrink-0" />
           <span className="font-semibold truncate">{chefName}</span>
         </div>
-        
-        <button 
-          onClick={() => setView('orders')} 
+
+        <button
+          onClick={() => setView('orders')}
           className={`w-3/4 py-4 rounded-xl font-extrabold text-lg mb-6 shadow-lg transition-colors flex flex-col items-center justify-center leading-tight ${view === 'orders' ? 'bg-[#ffc55a] text-[#00215e]' : 'bg-[#2c4e80] text-white hover:bg-[#ffc55a] hover:text-[#00215e]'}`}
         >
           <span>Incoming</span><span>Order</span>
         </button>
-        <button 
-          onClick={() => setView('inventory')} 
+        <button
+          onClick={() => setView('inventory')}
           className={`w-3/4 py-4 rounded-xl font-extrabold text-lg mb-6 shadow-lg transition-colors ${view === 'inventory' ? 'bg-[#ffc55a] text-[#00215e]' : 'bg-[#2c4e80] text-white hover:bg-[#ffc55a] hover:text-[#00215e]'}`}
         >
           Inventory
         </button>
-        
+
         <div className="mt-auto w-full flex flex-col items-center">
            <button onClick={() => setView('welcome')} className="text-white font-bold text-xl flex items-center hover:text-[#ffc55a] transition-colors">
              <Home className="w-6 h-6 mr-3" /> Home
@@ -332,11 +332,11 @@ export default function KokiPage() {
       </div>
 
       <div className="flex-1 bg-[#2c4e80] p-10 rounded-tl-[40px] shadow-[inset_10px_10px_20px_rgba(0,0,0,0.4)] flex flex-col overflow-hidden">
-         
+
          {view === 'orders' && (
            <div className="flex-1 flex flex-col overflow-hidden">
               <h3 className="text-white text-3xl font-extrabold tracking-wide mb-8 shrink-0">Kitchen Ticket View</h3>
-              
+
               <div className="flex space-x-4 mb-4 pr-2">
                  <div className="bg-[#00215e] w-36 flex flex-col items-center justify-center rounded-xl text-white font-extrabold text-lg py-4 shadow-md shrink-0 uppercase tracking-wide leading-tight">
                     <span>Table</span><span>Number</span>
@@ -367,7 +367,7 @@ export default function KokiPage() {
                               <span className="mt-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full uppercase tracking-widest font-bold">Needs Cancel</span>
                             )}
                          </div>
-                         
+
                          <div className="flex-1 flex flex-col space-y-3">
                             {pesanan.detailPesanan.map(item => {
                               const isItemReady = itemReadyState[item.idDetail];
@@ -377,7 +377,7 @@ export default function KokiPage() {
                                       <span>{item.menu.namaMenu}</span>
                                       <span className="text-[#fc4100] text-lg bg-gray-100 px-4 py-1 rounded-lg">x{item.jumlahPesanan}</span>
                                    </div>
-                                   <button 
+                                   <button
                                       onClick={() => toggleItemReady(item.idDetail)}
                                       className={`p-5 rounded-xl w-24 flex items-center justify-center font-extrabold transition-colors shadow-sm shrink-0 ${isItemReady ? 'bg-[#ffc55a] text-[#00215e]' : 'bg-[#fc4100] text-white hover:opacity-90'}`}
                                    >
@@ -389,14 +389,14 @@ export default function KokiPage() {
                          </div>
 
                          <div className="w-64 flex flex-col space-y-3 shrink-0">
-                           <button 
+                           <button
                               onClick={() => { if(isReady) handleMarkOrderReady(pesanan.noNota) }}
                               disabled={!isReady || hasMissingIngredient}
                               className={`flex-1 rounded-xl font-extrabold text-3xl flex items-center justify-center shadow-md transition-all uppercase tracking-widest ${isReady && !hasMissingIngredient ? 'bg-[#588157] text-white hover:opacity-90 cursor-pointer shadow-[0_0_15px_rgba(88,129,87,0.6)]' : 'bg-gray-400 text-gray-200 opacity-90 cursor-not-allowed'}`}
                            >
                               Ready
                            </button>
-                           <button 
+                           <button
                               onClick={() => handleRejectOrder(pesanan.noNota)}
                               className={`py-3 rounded-xl font-bold text-sm flex items-center justify-center shadow-md transition-all uppercase tracking-widest ${hasMissingIngredient ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse' : 'bg-red-800 text-red-200 hover:bg-red-700'}`}
                            >
@@ -414,7 +414,7 @@ export default function KokiPage() {
          {view === 'inventory' && (
            <div className="flex-1 flex flex-col overflow-hidden">
               <h3 className="text-white text-3xl font-extrabold tracking-wide mb-8 shrink-0">Raw Material Status</h3>
-              
+
               <div className="space-y-4 overflow-y-auto pr-2 pb-4 [scrollbar-width:thin]">
                 {loading ? (
                    <p className="text-center text-white font-bold mt-10 text-xl">Loading inventory data...</p>
@@ -426,7 +426,7 @@ export default function KokiPage() {
                          <div className="bg-white flex-1 p-6 rounded-xl text-[#00215e] font-extrabold text-2xl shadow-sm flex items-center border-l-8 border-[#00215e]">
                             {bahan.namaBahan}
                          </div>
-                         <button 
+                         <button
                             onClick={() => handleToggleBahanStatus(bahan.id, bahan.statusBahan)}
                             className={`w-72 p-6 rounded-xl font-extrabold text-3xl text-center shadow-md transition-colors shrink-0 uppercase tracking-widest ${isReady ? 'bg-[#588157] text-white hover:opacity-90' : 'bg-[#fc4100] text-white hover:opacity-90'}`}
                          >

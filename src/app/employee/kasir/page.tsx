@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, LogOut, Home, Banknote, QrCode, AlertCircle, CheckCircle2, Printer, Filter, User, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, LogOut, Home, Banknote, QrCode, AlertCircle, CheckCircle2, Printer, Filter, User, CheckSquare, CreditCard } from 'lucide-react';
 
 interface DetailPesanan {
   idDetail: string;
@@ -37,7 +37,8 @@ export default function KasirPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedOrder, setSelectedOrder] = useState<Pesanan | null>(null);
 
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QRIS'>('CASH');
+  // added DEBIT to payment method state
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QRIS' | 'DEBIT'>('CASH');
   const [moneyReceived, setMoneyReceived] = useState<string>('');
   const [tip, setTip] = useState<string>('');
 
@@ -62,10 +63,10 @@ export default function KasirPage() {
   });
 
   useEffect(() => {
-    // retrieve strictly logged in cashier info from localstorage or session
+    // retrieve strictly logged in cashier info from localstorage (covering old and new keys to prevent null constraint errors)
     if (typeof window !== 'undefined') {
-      const storedId = localStorage.getItem('pegawai_id') || localStorage.getItem('idPegawai') || '';
-      const storedName = localStorage.getItem('pegawai_nama') || localStorage.getItem('namaPegawai') || 'Unknown Cashier';
+      const storedId = localStorage.getItem('pegawai_id') || localStorage.getItem('idPegawai') || localStorage.getItem('employeeId') || '';
+      const storedName = localStorage.getItem('pegawai_nama') || localStorage.getItem('namaPegawai') || localStorage.getItem('employeeName') || 'Unknown Cashier';
 
       setCashierId(storedId);
       setCashierName(storedName);
@@ -102,6 +103,31 @@ export default function KasirPage() {
     }
   }, [selectedOrder]);
 
+  // quick action hotkeys handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isInput = document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA';
+
+      if (e.code === 'Space' && !isInput) {
+        // prevent page scrolling on space press
+        e.preventDefault();
+        if (selectedOrder && selectedOrder.statusTagihan !== 'PAID' && selectedOrder.statusTagihan !== 'DONE' && !modal.isOpen) {
+          handleConfirmPayment(selectedOrder);
+        }
+      } else if (e.key === 'Enter') {
+        if (modal.isOpen && modal.type === 'confirm' && modal.onConfirm) {
+          e.preventDefault();
+          modal.onConfirm();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedOrder, modal, paymentMethod, moneyReceived, tip, cashierId]);
+
   async function fetchOrders(showLoading = true) {
     if (showLoading) setLoading(true);
     try {
@@ -126,7 +152,7 @@ export default function KasirPage() {
 
   async function handleConfirmPayment(pesanan: Pesanan) {
     if (!cashierId) {
-      showModal('alert', 'cashier session not found. please relogin.');
+      showModal('alert', 'Cashier session not found. Please logout and login again.');
       return;
     }
 
@@ -138,13 +164,13 @@ export default function KasirPage() {
     if (paymentMethod === 'CASH') {
        const money = parseFloat(moneyReceived);
        if (isNaN(money) || money < totalBayar) {
-         showModal('alert', 'money received is insufficient to cover the total bill.');
+         showModal('alert', 'Money received is insufficient to cover the total bill.');
          return;
        }
     }
 
     // show confirmation modal instead of native confirm
-    showModal('confirm', `confirm ${paymentMethod} payment for table ${pesanan.noMeja}?`, async () => {
+    showModal('confirm', `Confirm ${paymentMethod} payment for Table ${pesanan.noMeja}?`, async () => {
       closeModal();
       try {
         const res = await fetch('/api/pembayaran', {
@@ -153,7 +179,8 @@ export default function KasirPage() {
           body: JSON.stringify({
             noNota: pesanan.noNota,
             totalBayar,
-            metodePembayaran: paymentMethod === 'CASH' ? 'TUNAI' : 'QRIS',
+            // correctly translate state to database matching strings
+            metodePembayaran: paymentMethod === 'CASH' ? 'TUNAI' : paymentMethod,
             idPegawai: cashierId
           }),
         });
@@ -168,21 +195,21 @@ export default function KasirPage() {
         if (res.ok && (responseData?.sukses || responseData?.success || !responseData?.error)) {
           // trigger local update to show paid animation instantly
           setSelectedOrder((prev) => (prev ? { ...prev, statusTagihan: 'PAID' } : null));
-          showModal('success', 'payment processed successfully!');
+          showModal('success', 'Payment processed successfully!');
           fetchOrders(false);
         } else {
-          const errorMsg = responseData?.pesan || responseData?.error || responseData?.message || `server error (${res.status}). verify the database relations.`;
+          const errorMsg = responseData?.pesan || responseData?.error || responseData?.message || `Server error (${res.status}). Verify the database relations.`;
           showModal('alert', errorMsg);
         }
       } catch (err) {
         console.error('payment error:', err);
-        showModal('alert', 'a network or system error occurred while processing the payment.');
+        showModal('alert', 'A network or system error occurred while processing the payment.');
       }
     });
   }
 
   async function handleMarkAsDone(pesanan: Pesanan) {
-    showModal('confirm', 'mark this order as done? it will be completely cleared from the active overview.', async () => {
+    showModal('confirm', 'Mark this order as done? It will be completely cleared from the active overview.', async () => {
       closeModal();
       try {
         const res = await fetch('/api/pesanan', {
@@ -195,11 +222,11 @@ export default function KasirPage() {
           setSelectedOrder(null);
           fetchOrders(false);
         } else {
-          showModal('alert', 'failed to update order status to done.');
+          showModal('alert', 'Failed to update order status to done.');
         }
       } catch (err) {
         console.error('error updating status:', err);
-        showModal('alert', 'a network error occurred while updating the status.');
+        showModal('alert', 'A network error occurred while updating the status.');
       }
     });
   }
@@ -226,6 +253,9 @@ export default function KasirPage() {
       localStorage.removeItem('pegawai_nama');
       localStorage.removeItem('idPegawai');
       localStorage.removeItem('namaPegawai');
+      localStorage.removeItem('employeeId');
+      localStorage.removeItem('employeeName');
+      localStorage.removeItem('employeeRole');
     }
     router.push('/employee/login');
   }
@@ -274,6 +304,12 @@ export default function KasirPage() {
                 </button>
               )}
             </div>
+
+            {modal.type === 'confirm' && (
+              <p className="text-center text-[10px] text-[#ffc55a]/80 mt-4 font-bold uppercase tracking-widest">
+                Hotkey: Press <span className="bg-black/30 px-1 rounded">Enter</span> to confirm
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -448,23 +484,30 @@ export default function KasirPage() {
              </div>
 
              {/* payment panel, fully hidden during print */}
-             <div className="w-[400px] flex flex-col h-full bg-white rounded-2xl shadow-2xl p-6 relative print:hidden">
+             <div className="w-[420px] flex flex-col h-full bg-white rounded-2xl shadow-2xl p-6 relative print:hidden">
                 <div className="mb-4 shrink-0">
                   <label className="text-[#00215e] font-extrabold text-base mb-2 block uppercase tracking-wider">Payment Method</label>
-                  <div className="flex space-x-3">
+                  <div className="flex space-x-2">
                     <button
                       onClick={() => setPaymentMethod('CASH')}
                       disabled={isPaid}
-                      className={`flex-1 py-3 rounded-xl flex items-center justify-center font-bold text-base border-2 transition-all ${paymentMethod === 'CASH' ? 'border-[#00215e] bg-[#00215e] text-white' : 'border-[#2c4e80]/30 text-[#2c4e80] hover:border-[#00215e]'}`}
+                      className={`flex-1 py-3 rounded-xl flex items-center justify-center font-bold text-sm border-2 transition-all ${paymentMethod === 'CASH' ? 'border-[#00215e] bg-[#00215e] text-white' : 'border-[#2c4e80]/30 text-[#2c4e80] hover:border-[#00215e]'}`}
                     >
-                      <Banknote className="w-5 h-5 mr-2" /> Cash
+                      <Banknote className="w-4 h-4 mr-1.5" /> Cash
                     </button>
                     <button
                       onClick={() => setPaymentMethod('QRIS')}
                       disabled={isPaid}
-                      className={`flex-1 py-3 rounded-xl flex items-center justify-center font-bold text-base border-2 transition-all ${paymentMethod === 'QRIS' ? 'border-[#00215e] bg-[#00215e] text-white' : 'border-[#2c4e80]/30 text-[#2c4e80] hover:border-[#00215e]'}`}
+                      className={`flex-1 py-3 rounded-xl flex items-center justify-center font-bold text-sm border-2 transition-all ${paymentMethod === 'QRIS' ? 'border-[#00215e] bg-[#00215e] text-white' : 'border-[#2c4e80]/30 text-[#2c4e80] hover:border-[#00215e]'}`}
                     >
-                      <QrCode className="w-5 h-5 mr-2" /> QRIS
+                      <QrCode className="w-4 h-4 mr-1.5" /> QRIS
+                    </button>
+                    <button
+                      onClick={() => setPaymentMethod('DEBIT')}
+                      disabled={isPaid}
+                      className={`flex-1 py-3 rounded-xl flex items-center justify-center font-bold text-sm border-2 transition-all ${paymentMethod === 'DEBIT' ? 'border-[#00215e] bg-[#00215e] text-white' : 'border-[#2c4e80]/30 text-[#2c4e80] hover:border-[#00215e]'}`}
+                    >
+                      <CreditCard className="w-4 h-4 mr-1.5" /> Debit
                     </button>
                   </div>
                 </div>
@@ -501,11 +544,18 @@ export default function KasirPage() {
                           </div>
                         </div>
                      </>
-                  ) : (
+                  ) : paymentMethod === 'QRIS' ? (
                      <div className="flex flex-col items-center justify-center h-full space-y-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 py-6">
                         <QrCode className="w-24 h-24 text-[#2c4e80] opacity-50" />
                         <p className="text-[#2c4e80] font-bold text-center px-4 text-sm">
                            {isPaid ? "Payment has been captured." : "Please generate QR code on EDC terminal for the customer to scan."}
+                        </p>
+                     </div>
+                  ) : (
+                     <div className="flex flex-col items-center justify-center h-full space-y-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 py-6">
+                        <CreditCard className="w-24 h-24 text-[#2c4e80] opacity-50" />
+                        <p className="text-[#2c4e80] font-bold text-center px-4 text-sm">
+                           {isPaid ? "Payment has been captured." : "Please swipe or insert Debit Card into the EDC terminal."}
                         </p>
                      </div>
                   )}
@@ -513,12 +563,17 @@ export default function KasirPage() {
 
                 <div className="mt-4 shrink-0 flex flex-col space-y-2">
                    {!isPaid ? (
-                     <button
-                        onClick={() => handleConfirmPayment(selectedOrder)}
-                        className="w-full font-extrabold text-lg uppercase tracking-widest text-center py-4 rounded-xl shadow-lg transition-all bg-[#fc4100] text-white hover:opacity-90 hover:scale-[1.02]"
-                     >
-                        Process Payment
-                     </button>
+                     <>
+                       <button
+                          onClick={() => handleConfirmPayment(selectedOrder)}
+                          className="w-full font-extrabold text-lg uppercase tracking-widest text-center py-4 rounded-xl shadow-lg transition-all bg-[#fc4100] text-white hover:opacity-90 hover:scale-[1.02]"
+                       >
+                          Process Payment
+                       </button>
+                       <p className="text-center text-[10px] text-[#00215e] font-bold tracking-widest uppercase">
+                         Hotkey: Press <span className="bg-[#fc4100]/20 px-1 rounded">Space</span> to pay
+                       </p>
+                     </>
                    ) : (
                      <button
                         onClick={() => handleMarkAsDone(selectedOrder)}

@@ -3,67 +3,65 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 export async function POST(request: Request) {
-	try {
-		const body = await request.json();
-		const { noNota, totalBayar, metodePembayaran } = body;
+  try {
+    const body = await request.json();
+    // FIX: ekstrak idPegawai dari body request agar tidak undefined saat disimpan
+    const { noNota, totalBayar, metodePembayaran, idPegawai } = body;
 
-		// validate input data
-		if (!noNota || totalBayar === undefined || !metodePembayaran) {
-			return NextResponse.json(
-				{ sukses: false, pesan: 'Invalid payment data provided.' },
-				{ status: 400 }
-			);
-		}
+    // validate input data
+    if (!noNota || totalBayar === undefined || !metodePembayaran || !idPegawai) {
+      return NextResponse.json(
+        { sukses: false, pesan: 'Incomplete payment data provided. (noNota, totalBayar, metodePembayaran, idPegawai are required)' },
+        { status: 400 }
+      );
+    }
 
-		// fetch the order to identify the table
-		const pesanan = await prisma.pesanan.findUnique({
-			where: { noNota }
-		});
+    // execute database transaction to ensure atomicity
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. check if the order exists
+      const pesanan = await tx.pesanan.findUnique({
+        where: { noNota }
+      });
 
-		if (!pesanan) {
-			return NextResponse.json(
-				{ sukses: false, pesan: 'Order not found.' },
-				{ status: 404 }
-			);
-		}
+      if (!pesanan) {
+        throw new Error('Order not found.');
+      }
 
-		// execute transaction using 'any' to bypass strict prisma client typing issues on vercel
-		const result = await prisma.$transaction(async (tx: any) => {
-			// 1. insert payment record
-			const pembayaran = await tx.pembayaran.create({
-				data: {
-					totalBayar: Number(totalBayar),
-					metodePembayaran: metodePembayaran,
-					noNota: noNota,
-					idPegawai: 'CASH-001' // default cashier id
-				}
-			});
+      if (pesanan.statusTagihan === 'PAID') {
+        throw new Error('Order has already been paid.');
+      }
 
-			// 2. update order status to paid
-			await tx.pesanan.update({
-				where: { noNota },
-				data: { statusTagihan: 'PAID' }
-			});
+      // 2. create the payment record
+      const pembayaran = await tx.pembayaran.create({
+        data: {
+          noNota,
+          totalBayar,
+          metodePembayaran,
+          idPegawai // ini sekarang tidak akan undefined
+        }
+      });
 
-			// 3. update table status to available
-			await tx.meja.update({
-				where: { noMeja: pesanan.noMeja },
-				data: { status: 'TERSEDIA' }
-			});
+      // 3. update order status to PAID
+      await tx.pesanan.update({
+        where: { noNota },
+        data: { statusTagihan: 'PAID' }
+      });
 
-			return pembayaran;
-		});
+      // 4. release the table by setting its status back to TERSEDIA
+      await tx.meja.update({
+        where: { noMeja: pesanan.noMeja },
+        data: { status: 'TERSEDIA' }
+      });
 
-		return NextResponse.json({
-			sukses: true,
-			pesan: 'Payment processed successfully.',
-			data: result
-		});
+      return pembayaran;
+    });
 
-	} catch (error: any) {
-		return NextResponse.json(
-			{ sukses: false, pesan: 'Server error occurred during payment processing.' },
-			{ status: 500 }
-		);
-	}
+    return NextResponse.json({ sukses: true, data: result });
+  } catch (error: any) {
+    console.error('payment processing error:', error);
+    return NextResponse.json(
+      { sukses: false, pesan: error.message || 'Internal server error during payment processing.' },
+      { status: 500 }
+    );
+  }
 }
