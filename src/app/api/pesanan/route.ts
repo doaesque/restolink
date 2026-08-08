@@ -1,6 +1,6 @@
 // api route for handling active orders
 import { NextResponse } from 'next/server';
-import prisma from '../../../lib/prisma';
+import prisma from '@/lib/prisma';
 
 // force next.js to bypass cache and dynamically fetch the latest db data
 export const dynamic = 'force-dynamic';
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     const tax = totalSubtotal * 0.1;
     const totalPajak = totalSubtotal + tax;
 
-    // 2. create new order record
+    // 2. create new order record including notes
     const newPesanan = await prisma.pesanan.create({
       data: {
         jumlahOrang: jumlahOrang || 1,
@@ -58,13 +58,20 @@ export async function POST(req: Request) {
           create: items.map((item: any) => ({
             jumlahPesanan: item.jumlahPesanan,
             subtotal: item.subtotal,
-            idMenu: item.idMenu
+            idMenu: item.idMenu,
+            catatan: item.catatan || null // added mapped item note support
           }))
         }
       }
     });
 
-    // 3. if payment method is direct cashless (paid), generate payment record
+    // 3. update table status to occupied (terisi) since an order is placed
+    await prisma.meja.update({
+      where: { noMeja: noMeja },
+      data: { status: 'TERISI' }
+    });
+
+    // 4. if payment method is direct cashless (paid), generate payment record
     if (statusTagihan === 'PAID' && metodePembayaran) {
       await prisma.pembayaran.create({
         data: {
