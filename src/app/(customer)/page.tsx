@@ -14,6 +14,7 @@ interface MenuData {
   subKategori?: string;
   harga: number;
   image?: string | null;
+  isAvailable?: boolean;
 }
 
 interface TableData {
@@ -480,7 +481,7 @@ function CustomerOrderContent() {
             {modalState === 'WHEN' && (
               <div className="bg-[#ffc55a] text-[#00215e] p-8 rounded-2xl w-[400px] relative shadow-2xl animate-in zoom-in-95 duration-200">
                 <button onClick={() => setModalState('NONE')} className="absolute top-4 right-4 bg-[#00215e] text-[#ffc55a] rounded-full p-1 hover:scale-110 transition-transform"><X className="w-5 h-5"/></button>
-                <h2 className="text-2xl font-extrabold text-center mb-6 tracking-wide">Proceed to payment</h2>
+                <h2 className="text-2xl font-extrabold text-center mb-6 tracking-wide">Proceed to Payment</h2>
                 <div className="flex flex-col space-y-4">
                   <button onClick={() => setModalState('METHOD')} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">PAY NOW</button>
                   <button onClick={() => handleOrder('UNPAID')} disabled={isOrdering} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">
@@ -624,8 +625,12 @@ function CustomerOrderContent() {
                   displayedMenus.map((menu) => (
                     <div
                       key={menu.id}
-                      onClick={() => addToCart(menu.id, 1)}
-                      className="bg-[#1a1a1a]/90 border border-[#ffc55a]/40 rounded-xl p-3 flex justify-between items-center shadow-xl cursor-pointer hover:border-[#ffc55a] transition-all hover:scale-[1.02] backdrop-blur-sm"
+                      onClick={() => menu.isAvailable !== false && addToCart(menu.id, 1)}
+                      className={`bg-[#1a1a1a]/90 border border-[#ffc55a]/40 rounded-xl p-3 flex justify-between items-center shadow-xl transition-all backdrop-blur-sm relative overflow-hidden ${
+                        menu.isAvailable !== false
+                          ? 'cursor-pointer hover:border-[#ffc55a] hover:scale-[1.02]'
+                          : 'opacity-50 cursor-not-allowed grayscale'
+                      }`}
                     >
                       <div className="flex items-center space-x-4 w-full">
                         {/* render image box only if menu.image exists in database */}
@@ -639,6 +644,13 @@ function CustomerOrderContent() {
                           <p className="text-[#ffc55a]/70 text-xs tracking-widest font-semibold">Rp. {menu.harga.toLocaleString('id-ID')}</p>
                         </div>
                       </div>
+
+                      {/* out of stock overlay */}
+                      {menu.isAvailable === false && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
+                          <span className="text-[#fc4100] font-extrabold tracking-widest text-sm bg-black/80 px-3 py-1 rounded-full border border-[#fc4100]">OUT OF STOCK</span>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
