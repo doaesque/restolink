@@ -1,9 +1,10 @@
+// database schema for restolink
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
 }
 
 // models based on the relational schema
@@ -11,7 +12,7 @@ datasource db {
 model Pelanggan {
   id             String    @id @default(uuid())
   namaPelanggan  String
-  
+
   // relations
   pesanan        Pesanan[]
 
@@ -20,7 +21,7 @@ model Pelanggan {
 
 model Pegawai {
   id             String      @id
-  pin            String  
+  pin            String
   namaPegawai    String
   jabatan        String      // options: kasir, koki, pelayan, pemilik
 
@@ -61,27 +62,24 @@ model Menu {
 model BahanBaku {
   id             String      @id @default(uuid())
   namaBahan      String
-  statusBahan    String      @default("TERSEDIA") // options: tersedia, habis
-  idPegawai      String?     // tracks which employee last updated it
+  statusBahan    String      // options: tersedia, habis
 
   // relations
   pegawai        Pegawai?    @relation(fields: [idPegawai], references: [id])
+  idPegawai      String?
   komposisi      Komposisi[]
 
   @@map("bahan_baku")
 }
 
-// associative table representing the many-to-many "membutuhkan" relationship
 model Komposisi {
   idKomposisi    String    @id @default(uuid())
-  
-  // foreign keys
   idMenu         String
-  idBahan        String
+  idBahanBaku    String
 
   // relations
   menu           Menu      @relation(fields: [idMenu], references: [id], onDelete: Cascade)
-  bahanBaku      BahanBaku @relation(fields: [idBahan], references: [id], onDelete: Cascade)
+  bahanBaku      BahanBaku @relation(fields: [idBahanBaku], references: [id], onDelete: Cascade)
 
   @@map("komposisi")
 }
@@ -90,12 +88,12 @@ model Pesanan {
   noNota           String            @id @default(uuid())
   tglPesanan       DateTime          @default(now())
   jumlahOrang      Int
-  statusPesanan    String            @default("MENUNGGU") // options: menunggu, diproses, selesai
-  statusTagihan    String            @default("UNPAID")   // options: unpaid, paid
-  
+  statusPesanan    String            @default("MENUNGGU") // options: menunggu, diproses, siap, selesai, dibatalkan
+  statusTagihan    String            @default("UNPAID") // options: unpaid, paid
+
   // foreign keys
   idPelanggan      String
-  idPegawai        String?           // optional: which waiter served them
+  idPegawai        String
   noMeja           Int
 
   // relations
@@ -112,6 +110,7 @@ model DetailPesanan {
   idDetail       String    @id @default(uuid())
   jumlahPesanan  Int
   subtotal       Float
+  catatan        String?
 
   // foreign keys
   idMenu         String
