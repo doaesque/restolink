@@ -35,12 +35,12 @@ function CustomerOrderContent() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [menus, setMenus] = useState<MenuData[]>([]);
   const [tables, setTables] = useState<TableData[]>([]);
-  
+
   // order context data
   const [selectedTable, setSelectedTable] = useState<string>('');
   const [customerName, setCustomerName] = useState<string>('');
   const [cart, setCart] = useState<{ id: string; qty: number }[]>([]);
-  
+
   // session state for table orders
   const [activeOrders, setActiveOrders] = useState<ActiveOrderItem[]>([]);
   const [currentNota, setCurrentNota] = useState<string | null>(null);
@@ -86,7 +86,7 @@ function CustomerOrderContent() {
       try {
         const res = await fetch(`/api/menu?t=${new Date().getTime()}`, { cache: 'no-store' });
         const data = await res.json();
-        
+
         if (Array.isArray(data)) {
           setMenus(data);
         } else if (data && data.data) {
@@ -109,7 +109,7 @@ function CustomerOrderContent() {
   useEffect(() => {
     if (expandedCategory && menus.length > 0) {
       const availableSubs = Array.from(new Set(menus.filter(m => m.kategori === expandedCategory && m.subKategori).map(m => m.subKategori as string)));
-      
+
       setActiveSubcategory((prev) => {
         if (!prev || !availableSubs.includes(prev)) {
           return availableSubs.length > 0 ? availableSubs[0] : null;
@@ -139,7 +139,7 @@ function CustomerOrderContent() {
     const menuItem = menus.find((m) => m.id === item.id);
     return sum + (menuItem?.harga || 0) * item.qty;
   }, 0);
-  const tax = subtotal * 0.1; 
+  const tax = subtotal * 0.1;
   const totalPrice = subtotal + tax;
 
   // unique random qr code value generator per transaction
@@ -152,8 +152,8 @@ function CustomerOrderContent() {
     try {
       const payload = {
         namaPelanggan: customerName.trim() || 'Guest',
-        idPelanggan: 'Guest', 
-        idPegawai: 'KASIR-001', 
+        idPelanggan: 'Guest',
+        idPegawai: 'KASIR-001',
         jumlahOrang: 2,
         noMeja: parseInt(selectedTable, 10) || 1,
         statusTagihan: statusTagihan, // correctly sends PAID or UNPAID
@@ -178,7 +178,7 @@ function CustomerOrderContent() {
       const generatedNota = result.noNota || result.id || `NOTA-${Date.now()}`;
       setCurrentNota(generatedNota);
 
-      if (result.sukses || result.id || result.noNota) { 
+      if (result.sukses || result.id || result.noNota) {
         // accumulate items to active table session
         const newItems: ActiveOrderItem[] = cart.map(item => {
           const m = menus.find(x => x.id === item.id)!;
@@ -193,11 +193,11 @@ function CustomerOrderContent() {
         if (statusTagihan === 'UNPAID' && !paymentMethod) { // pure PAY LATER
            setModalState('NONE');
            setOrderSuccess('UNPAID');
-           setCart([]); 
+           setCart([]);
         } else if (paymentMethod) { // CASH or CASHLESS chosen
            setModalState('NONE');
            setReceiptType(paymentMethod);
-           setCashlessStep('RECEIPT'); 
+           setCashlessStep('RECEIPT');
            setIsPaid(false);
         }
       } else {
@@ -278,12 +278,12 @@ function CustomerOrderContent() {
 
         <div className="relative z-10 flex flex-col items-center justify-center space-y-12">
           <Image src="/logo_emas.png" alt="RestoLink Logo" width={320} height={320} className="drop-shadow-2xl object-contain" priority />
-          
+
           {/* inputs for customer details */}
           <div className="flex flex-col items-center space-y-5 w-80">
-            
-            <input 
-              type="text" 
+
+            <input
+              type="text"
               placeholder="ENTER YOUR NAME"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
@@ -291,8 +291,8 @@ function CustomerOrderContent() {
             />
 
             <div className="relative w-full group">
-              <select 
-                value={selectedTable} 
+              <select
+                value={selectedTable}
                 onChange={(e) => setSelectedTable(e.target.value)}
                 className="w-full bg-[#00215e] text-[#ffc55a] border-2 border-[#ffc55a] p-4 rounded-xl font-bold tracking-widest text-center appearance-none focus:outline-none transition-all cursor-pointer text-sm"
               >
@@ -304,7 +304,7 @@ function CustomerOrderContent() {
               <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-[#ffc55a] pointer-events-none w-5 h-5" />
             </div>
 
-            <button 
+            <button
               onClick={() => setShowWelcome(false)}
               disabled={!selectedTable || !customerName.trim()}
               className="w-full bg-[#00215e] border-2 border-[#ffc55a] text-[#ffc55a] px-8 py-4 rounded-xl text-3xl font-bold tracking-widest hover:bg-[#ffc55a] hover:text-[#00215e] transition-all shadow-2xl uppercase disabled:opacity-50 disabled:cursor-not-allowed"
@@ -336,7 +336,7 @@ function CustomerOrderContent() {
             <div className="flex justify-center mb-6">
               <Image src="/logo.png" alt="RestoLink Logo" width={80} height={80} className="object-contain drop-shadow-md" />
             </div>
-            
+
             <div className="flex justify-between text-sm font-bold mb-4 tracking-wide">
               <div>
                 <p>Table #{selectedTable}</p>
@@ -397,7 +397,7 @@ function CustomerOrderContent() {
         {/* cashless split screen (step 2: dark receipt + qris box) */}
         {receiptType === 'CASHLESS' && cashlessStep === 'QRIS' && (
           <div className="relative z-10 flex items-center space-x-10 animate-in fade-in slide-in-from-bottom-8 duration-300">
-            
+
             {/* dark receipt for cashless on the left */}
             <div className="relative bg-[#111111]/90 text-[#ffc55a] w-[450px] p-8 rounded-2xl shadow-2xl border-2 border-[#ffc55a]/40 backdrop-blur-md">
               {/* subtle huge white stamp image overlay when paid */}
@@ -449,17 +449,17 @@ function CustomerOrderContent() {
                  Finish Your Payment Here
                </h2>
                <div className="bg-[#ffc55a] p-5 rounded-2xl shadow-[0_0_50px_rgba(255,197,90,0.4)] border-4 border-[#00215e]/20">
-                 <QRCodeSVG 
-                   value={qrPaymentData} 
-                   size={220} 
-                   bgColor="#ffc55a" 
-                   fgColor="#00215e" 
-                   level="H" 
+                 <QRCodeSVG
+                   value={qrPaymentData}
+                   size={220}
+                   bgColor="#ffc55a"
+                   fgColor="#00215e"
+                   level="H"
                  />
                </div>
                <p className="text-[#ffc55a]/80 italic mt-6 text-xs tracking-widest">-Hope you Enjoy Your Dinner-</p>
-               <button 
-                 onClick={() => completePayment('CASHLESS')} 
+               <button
+                 onClick={() => completePayment('CASHLESS')}
                  className="mt-6 bg-[#ffc55a] text-[#00215e] px-12 py-3 rounded-xl font-bold tracking-widest hover:opacity-90 transition-opacity shadow-lg relative z-40"
                >
                  DONE
@@ -472,11 +472,11 @@ function CustomerOrderContent() {
   } else {
     viewContent = (
       <div className="relative w-screen h-screen bg-black font-serif overflow-hidden flex">
-        
+
         {/* modal overlays */}
         {modalState !== 'NONE' && (
           <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200">
-            
+
             {modalState === 'WHEN' && (
               <div className="bg-[#ffc55a] text-[#00215e] p-8 rounded-2xl w-[400px] relative shadow-2xl animate-in zoom-in-95 duration-200">
                 <button onClick={() => setModalState('NONE')} className="absolute top-4 right-4 bg-[#00215e] text-[#ffc55a] rounded-full p-1 hover:scale-110 transition-transform"><X className="w-5 h-5"/></button>
@@ -518,14 +518,14 @@ function CustomerOrderContent() {
           </div>
 
           <nav className="flex flex-col w-full text-[#ffc55a]">
-            
+
             {/* food category accordion */}
             <div className="w-full">
-              <button 
+              <button
                 onClick={() => handleCategoryClick('FOOD')}
                 className={`w-full py-4 px-4 text-base font-bold uppercase tracking-widest flex justify-between items-center transition-all ${
-                  expandedCategory === 'FOOD' 
-                    ? 'bg-[#ffc55a]/20 border-l-4 border-l-[#ffc55a] border-t border-[#ffc55a]/30 text-[#ffc55a] shadow-md' 
+                  expandedCategory === 'FOOD'
+                    ? 'bg-[#ffc55a]/20 border-l-4 border-l-[#ffc55a] border-t border-[#ffc55a]/30 text-[#ffc55a] shadow-md'
                     : 'hover:bg-[#ffc55a]/10 opacity-80 hover:opacity-100'
                 }`}
               >
@@ -534,17 +534,17 @@ function CustomerOrderContent() {
                 </div>
                 <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${expandedCategory === 'FOOD' ? 'rotate-180 text-[#ffc55a]' : 'opacity-50'}`} />
               </button>
-              
+
               {/* dynamic food subcategories */}
               {expandedCategory === 'FOOD' && dynamicSubcategories.FOOD && (
                 <div className="flex flex-col bg-[#2c4e80]/40 border-b border-[#ffc55a]/30">
                   {dynamicSubcategories.FOOD.map((sub) => (
-                    <button 
+                    <button
                       key={sub}
                       onClick={() => setActiveSubcategory(sub)}
                       className={`text-left pl-12 py-3 text-[11px] font-bold tracking-widest uppercase transition-all ${
-                        activeSubcategory === sub 
-                          ? 'text-[#ffc55a] bg-[#ffc55a]/20 border-l-2 border-l-[#ffc55a]' 
+                        activeSubcategory === sub
+                          ? 'text-[#ffc55a] bg-[#ffc55a]/20 border-l-2 border-l-[#ffc55a]'
                           : 'text-[#ffc55a]/70 hover:text-[#ffc55a] hover:bg-[#ffc55a]/10'
                       }`}
                     >
@@ -557,11 +557,11 @@ function CustomerOrderContent() {
 
             {/* drinks category accordion */}
             <div className="w-full">
-              <button 
+              <button
                 onClick={() => handleCategoryClick('DRINKS')}
                 className={`w-full py-4 px-4 text-base font-bold uppercase tracking-widest flex justify-between items-center transition-all ${
-                  expandedCategory === 'DRINKS' 
-                    ? 'bg-[#ffc55a]/20 border-l-4 border-l-[#ffc55a] border-y border-[#ffc55a]/30 text-[#ffc55a] shadow-md' 
+                  expandedCategory === 'DRINKS'
+                    ? 'bg-[#ffc55a]/20 border-l-4 border-l-[#ffc55a] border-y border-[#ffc55a]/30 text-[#ffc55a] shadow-md'
                     : 'hover:bg-[#ffc55a]/10 opacity-80 hover:opacity-100'
                 }`}
               >
@@ -575,12 +575,12 @@ function CustomerOrderContent() {
               {expandedCategory === 'DRINKS' && dynamicSubcategories.DRINKS && (
                 <div className="flex flex-col bg-[#2c4e80]/40 border-b border-[#ffc55a]/30">
                   {dynamicSubcategories.DRINKS.map((sub) => (
-                    <button 
+                    <button
                       key={sub}
                       onClick={() => setActiveSubcategory(sub)}
                       className={`text-left pl-12 py-3 text-[11px] font-bold tracking-widest uppercase transition-all ${
-                        activeSubcategory === sub 
-                          ? 'text-[#ffc55a] bg-[#ffc55a]/20 border-l-2 border-l-[#ffc55a]' 
+                        activeSubcategory === sub
+                          ? 'text-[#ffc55a] bg-[#ffc55a]/20 border-l-2 border-l-[#ffc55a]'
                           : 'text-[#ffc55a]/70 hover:text-[#ffc55a] hover:bg-[#ffc55a]/10'
                       }`}
                     >
@@ -622,8 +622,8 @@ function CustomerOrderContent() {
                   </div>
                 ) : (
                   displayedMenus.map((menu) => (
-                    <div 
-                      key={menu.id} 
+                    <div
+                      key={menu.id}
                       onClick={() => addToCart(menu.id, 1)}
                       className="bg-[#1a1a1a]/90 border border-[#ffc55a]/40 rounded-xl p-3 flex justify-between items-center shadow-xl cursor-pointer hover:border-[#ffc55a] transition-all hover:scale-[1.02] backdrop-blur-sm"
                     >
@@ -649,7 +649,7 @@ function CustomerOrderContent() {
           {/* right sidebar cart */}
           <div className="w-[350px] relative z-10 bg-black/50 border-l border-[#ffc55a]/30 backdrop-blur-md flex flex-col shrink-0 shadow-[-15px_0_30px_rgba(0,0,0,0.5)]">
             <div className="flex-1 p-6 flex flex-col overflow-hidden">
-              
+
               <div className="flex items-center space-x-3 mb-5 pb-4 border-b border-[#ffc55a]/30 text-[#ffc55a]">
                 {/* custom menu icon */}
                 <div className="w-8 h-8 flex items-center justify-center shrink-0">
@@ -703,7 +703,7 @@ function CustomerOrderContent() {
                    <p className="text-[10px] font-bold tracking-widest">{totalItems} items</p>
                    <p className="text-base font-bold tracking-widest mt-1">Rp. {totalPrice.toLocaleString('id-ID')}</p>
                  </div>
-                 <button 
+                 <button
                   onClick={() => setModalState('WHEN')}
                   disabled={cart.length === 0}
                   className="bg-[#00215e] text-[#ffc55a] px-6 py-2 rounded-lg text-sm font-bold tracking-widest hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg"
@@ -725,7 +725,7 @@ function CustomerOrderContent() {
   return (
     <>
       {viewContent}
-      
+
       {/* global success popup overlay (minimalist typographic design) */}
       {orderSuccess && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center font-serif animate-in fade-in duration-200">
@@ -736,17 +736,17 @@ function CustomerOrderContent() {
               {orderSuccess === 'CASH' && 'Payment request confirmed! Please proceed to the cashier to complete payment.'}
               {orderSuccess === 'CASHLESS' && 'Payment complete! Your order is now being processed. Enjoy your meal.'}
             </p>
-            
+
             {orderSuccess === 'UNPAID' ? (
-              <button 
-                onClick={continueOrderingSession} 
+              <button
+                onClick={continueOrderingSession}
                 className="w-full bg-[#00215e] text-[#ffc55a] py-4 rounded-xl font-bold tracking-widest hover:opacity-90 shadow-lg transition-opacity flex items-center justify-center space-x-2"
               >
                 <span>ADD MORE ITEMS</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
             ) : (
-              <button 
+              <button
                 onClick={resetFlow}
                 className="w-full bg-[#00215e] text-[#ffc55a] py-4 rounded-xl font-bold tracking-widest hover:opacity-90 shadow-lg transition-opacity"
               >
