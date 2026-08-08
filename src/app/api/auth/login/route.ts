@@ -1,66 +1,54 @@
-// authentication api route using pin for login
+// api route for employee login authentication
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const { username, pin } = body;
+    const body = await req.json();
+    // support both username and idPegawai keys for backward compatibility
+    const idPegawai = (body.idPegawai || body.username || '').toUpperCase();
+    const pin = body.pin;
 
-    // input validation
-    if (!username || !pin) {
+    if (!idPegawai || !pin) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Username and PIN are required.' },
+        { sukses: false, pesan: 'Employee ID and PIN are required.' },
         { status: 400 }
       );
     }
 
-    // fetch employee record using username (mapped to id in database)
     const pegawai = await prisma.pegawai.findUnique({
-      where: { id: username },
+      where: { id: idPegawai }
     });
 
     if (!pegawai) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Employee not found. Please check your ID.' },
+        { sukses: false, pesan: 'Invalid Employee ID or PIN.' },
         { status: 401 }
       );
     }
 
-    // verify hashed pin
-    const isPinValid = await bcrypt.compare(pin, pegawai.pin);
+    const isMatch = await bcrypt.compare(pin, pegawai.pin);
 
-    if (!isPinValid) {
+    if (!isMatch) {
       return NextResponse.json(
-        { sukses: false, pesan: 'Incorrect PIN provided.' },
+        { sukses: false, pesan: 'Invalid Employee ID or PIN.' },
         { status: 401 }
       );
     }
 
-    // generate success response
-    const response = NextResponse.json({
+    return NextResponse.json({
       sukses: true,
-      pesan: 'Login successful.',
-      data: { id: pegawai.id, namaPegawai: pegawai.namaPegawai, jabatan: pegawai.jabatan },
+      data: {
+        id: pegawai.id,
+        namaPegawai: pegawai.namaPegawai,
+        jabatan: pegawai.jabatan
+      }
     });
-
-    // set secure http-only session cookie
-    response.cookies.set('employee_session', JSON.stringify({ id: pegawai.id, role: pegawai.jabatan }), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 12,
-      path: '/',
-    });
-
-    return response;
   } catch (error) {
-    // log the error to the server console so it can be debugged in vercel logs
-    console.error('Login API Error:', error);
-
+    console.error('login error:', error);
     return NextResponse.json(
-      { sukses: false, pesan: 'A server error occurred during authentication.' },
+      { sukses: false, pesan: 'Internal server error during authentication.' },
       { status: 500 }
     );
   }
