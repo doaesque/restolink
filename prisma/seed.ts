@@ -141,8 +141,8 @@ async function main() {
         pegawai: { connect: { id: 'KASIR-001' } },
         detailPesanan: {
           create: [
-            { menu: { connect: { id: wagyu.id } }, jumlahPesanan: 2, subtotal: wagyu.harga * 2 },
-            { menu: { connect: { id: water.id } }, jumlahPesanan: 2, subtotal: water.harga * 2 }
+            { menu: { connect: { id: wagyu.id } }, jumlahPesanan: 2, subtotal: wagyu.harga * 2, catatan: 'Medium rare please' }, // added dummy note
+            { menu: { connect: { id: water.id } }, jumlahPesanan: 2, subtotal: water.harga * 2, catatan: 'No ice' }               // added dummy note
           ]
         },
         pembayaran: {
@@ -184,7 +184,7 @@ async function main() {
         pegawai: { connect: { id: 'PLYN-001' } },
         detailPesanan: {
           create: [
-            { menu: { connect: { id: water.id } }, jumlahPesanan: 2, subtotal: water.harga * 2 }
+            { menu: { connect: { id: water.id } }, jumlahPesanan: 2, subtotal: water.harga * 2, catatan: 'Extra ice' } // added dummy note
           ]
         }
       }

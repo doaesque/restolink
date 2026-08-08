@@ -112,6 +112,7 @@ model DetailPesanan {
   idDetail       String    @id @default(uuid())
   jumlahPesanan  Int
   subtotal       Float
+  catatan        String?   // optional note for kitchen or specific requests
 
   // foreign keys
   idMenu         String
