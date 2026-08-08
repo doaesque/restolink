@@ -12,7 +12,16 @@ export async function GET() {
         pelanggan: true,
         meja: true,
         detailPesanan: {
-          include: { menu: true }
+          include: {
+            menu: {
+              // memanggil relasi komposisi agar frontend koki tau bahan baku aslinya
+              include: {
+                komposisi: {
+                  include: { bahanBaku: true }
+                }
+              }
+            }
+          }
         },
         pembayaran: true
       },

@@ -99,10 +99,11 @@ async function main() {
     data: [
       { id: 'BB-01', namaBahan: 'A5 Japanese Wagyu', statusBahan: 'TERSEDIA' },
       { id: 'BB-02', namaBahan: 'Fresh Black Truffle', statusBahan: 'TERSEDIA' },
-      { id: 'BB-03', namaBahan: 'Iranian Saffron Threads', statusBahan: 'HABIS' }, // example of out of stock
+      { id: 'BB-03', namaBahan: 'Saffron', statusBahan: 'HABIS' }, // updated name so text matching triggers Out Of Stock for lobster
       { id: 'BB-04', namaBahan: 'Artesian Water', statusBahan: 'TERSEDIA' },
       { id: 'BB-05', namaBahan: 'Alaskan King Crab', statusBahan: 'TERSEDIA' },
-      { id: 'BB-06', namaBahan: 'Edible 24K Gold Leaf', statusBahan: 'TERSEDIA' }
+      { id: 'BB-06', namaBahan: 'Edible 24K Gold Leaf', statusBahan: 'TERSEDIA' },
+      { id: 'BB-07', namaBahan: 'Vintage Champagne Bottle', statusBahan: 'TERSEDIA' } // added champagne ingredient
     ],
   });
 
@@ -113,14 +114,15 @@ async function main() {
   const water = menus.find(m => m.namaMenu.includes('WATER'));
   const champagne = menus.find(m => m.namaMenu.includes('CHAMPAGNE'));
 
-  // linking "Iranian Saffron Threads" (BB-03, HABIS) to Lobster so it triggers Out of Stock
-  if (wagyu && lobster && water) {
+  // linking ingredients to their respective menus including champagne
+  if (wagyu && lobster && water && champagne) {
     await prisma.komposisi.createMany({
       data: [
         { idMenu: wagyu.id, idBahan: 'BB-01' },
         { idMenu: wagyu.id, idBahan: 'BB-02' },
         { idMenu: lobster.id, idBahan: 'BB-03' },
-        { idMenu: water.id, idBahan: 'BB-04' }
+        { idMenu: water.id, idBahan: 'BB-04' },
+        { idMenu: champagne.id, idBahan: 'BB-07' } // now linked to BB-07
       ]
     });
   }
