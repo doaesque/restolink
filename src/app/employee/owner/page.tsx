@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, LogOut, Home, ShieldCheck, DollarSign, Users, ClipboardList, CheckCircle2, AlertCircle, Tv, Search, X, ChefHat, GlassWater, ReceiptText } from 'lucide-react';
+import { LayoutDashboard, LogOut, Home, ShieldCheck, DollarSign, Users, ClipboardList, CheckCircle2, AlertCircle, Tv, Search, ChefHat, GlassWater, ReceiptText } from 'lucide-react';
 
 interface DetailPesanan {
   idDetail: string;
@@ -29,10 +29,18 @@ interface Staff {
   id: string;
   namaPegawai: string;
   jabatan: string;
-  isOnline: boolean; // simulated online status matching mockup
 }
 
-type StaffRole = 'KASIR' | 'KOKI' | 'PELAYAN' | 'PEMILIK';
+interface Meja {
+  noMeja: number;
+  status: string;
+}
+
+interface BahanBaku {
+  id: string;
+  namaBahan: string;
+  statusBahan: string;
+}
 
 // custom modal interface matching other employee modules
 interface ModalState {
@@ -45,17 +53,18 @@ export default function OwnerPage() {
   const router = useRouter();
   const [view, setView] = useState<'welcome' | 'dashboard'>('welcome');
   const [activeTab, setActiveTab] = useState<'transactions' | 'staff' | 'monitor'>('transactions');
+  const [monitorSubTab, setMonitorSubTab] = useState<'kasir' | 'pelayan' | 'koki'>('kasir');
+  const [selectedMonitorTable, setSelectedMonitorTable] = useState<number | null>(null);
+
   const [listTransaksi, setListTransaksi] = useState<Transaksi[]>([]);
   const [listStaff, setListStaff] = useState<Staff[]>([]);
+  const [listMeja, setListMeja] = useState<Meja[]>([]);
+  const [listBahan, setListBahan] = useState<BahanBaku[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // monitor staff search/filter states matching Monitoring Staff.png
-  const [searchTermMonitor, setSearchTermMonitor] = useState('');
-  const [roleFilterMonitor, setRoleFilterMonitor] = useState<string>('ALL');
-  const [statusFilterMonitor, setStatusFilterMonitor] = useState<string>('ALL');
-
-  // holding state for the staff member currently being monitored in modal
-  const [selectedMonitoringStaff, setSelectedMonitoringStaff] = useState<Staff | null>(null);
+  // staff directory filter states
+  const [searchTermStaff, setSearchTermStaff] = useState('');
+  const [roleFilterStaff, setRoleFilterStaff] = useState<string>('ALL');
 
   // owner profile state
   const [ownerId, setOwnerId] = useState<string>('');
@@ -67,6 +76,9 @@ export default function OwnerPage() {
     type: 'alert',
     message: ''
   });
+
+  // custom scrollbar class for elegant UI
+  const customScrollbar = "[&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#ffc55a]/50 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#ffc55a]";
 
   useEffect(() => {
     // enforce strict role security check for owner dashboard
@@ -95,30 +107,34 @@ export default function OwnerPage() {
   async function fetchOwnerData() {
     setLoading(true);
     try {
-      // fetch transaction history and staff data concurrently
-      const [resPesanan, resStaff] = await Promise.all([
+      // fetch transaction history, staff, table, and raw material data concurrently for 100% real db monitoring
+      const [resPesanan, resStaff, resMeja, resBahan] = await Promise.all([
         fetch('/api/pesanan'),
-        fetch('/api/pegawai')
+        fetch('/api/pegawai'),
+        fetch('/api/meja'),
+        fetch('/api/bahan-baku')
       ]);
 
       const dataPesanan = await resPesanan.json();
       const dataStaff = await resStaff.json();
+      const dataMeja = await resMeja.json();
+      const dataBahan = await resBahan.json();
 
-      if (dataPesanan.sukses || dataPesanan.data) {
-        setListTransaksi(dataPesanan.data || dataPesanan);
+      if (dataPesanan.sukses || dataPesanan.data || Array.isArray(dataPesanan)) {
+        setListTransaksi(dataPesanan.data || (Array.isArray(dataPesanan) ? dataPesanan : []));
       }
 
-      // updating simulated staff data to match mockup names and online status
-      const updatedDummyStaff: Staff[] = [
-        { id: 'KSR140501', namaPegawai: 'Salsabila Khoirunnisa', jabatan: 'KASIR', isOnline: true },
-        { id: 'WTR140501', namaPegawai: 'Najwa Nurul', jabatan: 'PELAYAN', isOnline: true },
-        { id: 'CHK140501', namaPegawai: 'Daisy Maria', jabatan: 'KOKI', isOnline: true },
-        { id: 'WTR140502', namaPegawai: 'Amanda Widjaja', jabatan: 'PELAYAN', isOnline: true },
-        { id: 'CHK140502', namaPegawai: 'Kevin Sanjaya', jabatan: 'KOKI', isOnline: true },
-        { id: 'KSR140502', namaPegawai: 'Mawar Rosalin', jabatan: 'KASIR', isOnline: false }, // matching 'ga hadir' mockup
-      ];
+      if (dataStaff.sukses || dataStaff.data || Array.isArray(dataStaff)) {
+        setListStaff(dataStaff.data || (Array.isArray(dataStaff) ? dataStaff : []));
+      }
 
-      setListStaff(updatedDummyStaff);
+      if (dataMeja.sukses || dataMeja.data || Array.isArray(dataMeja)) {
+        setListMeja(dataMeja.data || (Array.isArray(dataMeja) ? dataMeja : []));
+      }
+
+      if (dataBahan.sukses || dataBahan.data || Array.isArray(dataBahan)) {
+        setListBahan(dataBahan.data || (Array.isArray(dataBahan) ? dataBahan : []));
+      }
     } catch (err) {
       console.error('failed to fetch owner monitoring data:', err);
       showModal('alert', 'Failed to load monitoring data from the server.');
@@ -156,14 +172,11 @@ export default function OwnerPage() {
       return sum + sub + (sub * 0.1);
     }, 0);
 
-  // filtering logic for monitor staff tab matching Monitoring Staff.png
-  const filteredStaffMonitor = listStaff.filter(staff => {
-    const nameMatch = staff.namaPegawai.toLowerCase().includes(searchTermMonitor.toLowerCase());
-    const roleMatch = roleFilterMonitor === 'ALL' || staff.jabatan === roleFilterMonitor;
-    const statusMatch = statusFilterMonitor === 'ALL' ||
-      (statusFilterMonitor === 'ONLINE' && staff.isOnline) ||
-      (statusFilterMonitor === 'OFFLINE' && !staff.isOnline);
-    return nameMatch && roleMatch && statusMatch;
+  // filtering logic for staff directory tab
+  const filteredStaffList = listStaff.filter(staff => {
+    const nameMatch = staff.namaPegawai.toLowerCase().includes(searchTermStaff.toLowerCase());
+    const roleMatch = roleFilterStaff === 'ALL' || staff.jabatan === roleFilterStaff;
+    return nameMatch && roleMatch;
   });
 
   // ---------------------------------------------------------
@@ -193,146 +206,6 @@ export default function OwnerPage() {
   };
 
   // ---------------------------------------------------------
-  // 0.1 layarmonitormodal (strictly read-only screen viewer)
-  // ---------------------------------------------------------
-  const renderLayarMonitorModal = () => {
-    if (!selectedMonitoringStaff) return null;
-    const staff = selectedMonitoringStaff;
-
-    return (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-md transition-opacity duration-300">
-        <div className="bg-white rounded-3xl w-[90vw] h-[90vh] shadow-2xl border border-gray-200 flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-
-          {/* modal header matching aesthetic */}
-          <div className="bg-[#00215e] p-6 text-white flex justify-between items-center shrink-0">
-            <div className="flex items-center space-x-4">
-              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-2xl text-[#00215e]">
-                {staff.namaPegawai.charAt(0)}
-              </div>
-              <div>
-                <h3 className="text-2xl font-black">{staff.namaPegawai} Screen</h3>
-                <div className="flex items-center space-x-2 mt-1">
-                  <span className="bg-[#ffc55a] text-[#00215e] text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">{staff.jabatan}</span>
-                  <p className="text-xs text-gray-300">ID: {staff.id}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-3">
-              {/* strict read-only warning matching Cashier Cash Owner.png */}
-              <div className="bg-red-500/20 border border-red-500 text-red-100 font-bold px-4 py-2 rounded-xl text-sm flex items-center">
-                <AlertCircle className="w-4 h-4 mr-2" /> STF_MONITOR: READ-ONLY SCREEN MONITORING
-              </div>
-              <button onClick={() => setSelectedMonitoringStaff(null)} className="bg-white/10 hover:bg-white/20 p-3 rounded-full text-white transition-colors">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-          </div>
-
-          {/* modal content body - strictly read-only simulations */}
-          <div className="flex-1 bg-gray-50 p-8 overflow-hidden relative">
-
-            {/* koki screen monitoring logic - unclickable transactions list (mocked view) */}
-            {staff.jabatan === 'KOKI' && (
-              <div className="flex flex-col h-full">
-                <h4 className="text-[#00215e] text-lg font-extrabold mb-6 flex items-center"><ChefHat className="w-5 h-5 mr-2" />KOKI SCREEN MONITOR</h4>
-                <div className="space-y-4 overflow-y-auto pr-2">
-                  {listTransaksi.filter(t => t.statusPesanan === 'DIPROSES' || t.statusPesanan === 'MENUNGGU').map(trx => (
-                    <div key={trx.noNota} className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
-                      <div className="flex justify-between items-center border-b border-gray-100 pb-3 mb-3">
-                        <span className="font-bold text-[#00215e]">Nota: {trx.noNota} | Table #{trx.noMeja}</span>
-                        <span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded uppercase">{trx.statusPesanan}</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2 text-sm text-gray-700">
-                        {trx.detailPesanan.map(item => (
-                          <div key={item.idDetail} className="bg-gray-100 px-3 py-1 rounded">
-                            {item.jumlahPesanan}x {item.menu.namaMenu}
-                          </div>
-                        ))}
-                      </div>
-                      {/* actions removed for read-only monitor */}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* pelayan screen monitoring logic - inactive floor map view (mocked view) */}
-            {staff.jabatan === 'PELAYAN' && (
-              <div className="flex flex-col h-full">
-                <h4 className="text-[#00215e] text-lg font-extrabold mb-6 flex items-center"><GlassWater className="w-5 h-5 mr-2" />PELAYAN SCREEN MONITOR</h4>
-                <div className="grid grid-cols-5 gap-5 overflow-y-auto pr-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(mejaNo => {
-                    const isOccupied = mejaNo === 3 || mejaNo === 5 || mejaNo === 8;
-                    return (
-                      <div key={mejaNo} className={`relative aspect-square border-2 rounded-2xl flex flex-col items-center justify-center p-4 backdrop-blur-md shadow-inner transition-all ${isOccupied ? 'bg-red-500/10 border-red-500/50' : 'bg-green-500/10 border-green-500/50'}`}>
-                        <span className={`text-4xl font-black mb-1 ${isOccupied ? 'text-red-400' : 'text-green-400'}`}>{mejaNo}</span>
-                        <span className={`text-[10px] text-white font-bold tracking-widest uppercase px-2 py-0.5 rounded opacity-80 ${isOccupied ? 'bg-red-500' : 'bg-green-500'}`}>
-                          {isOccupied ? 'Occupied' : 'Free'}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-                {/* all interactable map logic removed */}
-              </div>
-            )}
-
-            {/* kasir screen monitoring logic - inactive order list view matching Cashier Cash Owner.png */}
-            {staff.jabatan === 'KASIR' && (
-              <div className="flex flex-col h-full">
-                <h4 className="text-[#00215e] text-lg font-extrabold mb-6 flex items-center"><ReceiptText className="w-5 h-5 mr-2" />KASIR SCREEN MONITOR</h4>
-                <div className="space-y-4 overflow-y-auto pr-2">
-                  {listTransaksi.map((trx) => {
-                    const subtotal = trx.detailPesanan.reduce((acc, item) => acc + item.subtotal, 0);
-                    const total = subtotal + (subtotal * 0.1);
-                    const isPaid = trx.statusTagihan === 'PAID';
-                    return (
-                      <div key={trx.noNota} className="flex space-x-4 items-stretch bg-white rounded-xl shadow-md p-5 border border-gray-100">
-                        <div className="bg-[#00215e] w-28 text-[#ffc55a] font-black text-3xl flex items-center justify-center rounded-xl shadow-inner shrink-0">
-                          {trx.noMeja}
-                        </div>
-                        <div className="flex-1 text-[#00215e]">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="font-extrabold text-lg">{trx.pelanggan?.namaPelanggan || 'Guest'}</span>
-                            <span className="text-xs bg-gray-100 px-3 py-1 rounded font-bold tracking-wide">Nota: {trx.noNota}</span>
-                          </div>
-                          <div className="text-gray-600 text-sm flex flex-wrap gap-x-3 gap-y-1">
-                            {trx.detailPesanan.map(item => (
-                              <span key={item.idDetail}>{item.jumlahPesanan}x {item.menu.namaMenu}</span>
-                            ))}
-                          </div>
-                          <div className="border-t border-dashed border-gray-200 mt-3 pt-3 flex justify-between items-center">
-                            <span className="text-gray-500 text-xs font-bold uppercase tracking-wide">Total Bill</span>
-                            <span className="text-xl font-black text-[#fc4100]">Rp. {total.toLocaleString('id-ID')}</span>
-                          </div>
-                        </div>
-                        <div className={`w-40 font-black text-lg flex items-center justify-center rounded-xl uppercase tracking-widest shrink-0 ${isPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                          {isPaid ? 'Paid' : 'Unpaid'}
-                        </div>
-                        {/* check receipt / process payment buttons removed for strict read-only monitor */}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* strict read-only constraint warning */}
-            <div className="absolute inset-0 z-10 pointer-events-none border-[6px] border-red-500 rounded-[20px] m-6 opacity-30 flex items-center justify-center">
-              <span className="text-red-500 text-9xl font-black uppercase tracking-widest opacity-20 -rotate-12">MONITOR_ONLY</span>
-            </div>
-          </div>
-
-          {/* modal footer */}
-          <div className="bg-gray-100 p-6 border-t border-gray-200 text-center text-xs text-gray-500 font-bold shrink-0">
-            Monitoring data accurate as of {new Date().toLocaleString('id-ID')}. WebSocket streaming simulated.
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ---------------------------------------------------------
   // 1. welcome screen view
   // ---------------------------------------------------------
   if (view === 'welcome') {
@@ -345,7 +218,7 @@ export default function OwnerPage() {
            </button>
         </div>
 
-        <div className="flex flex-col items-center w-full max-w-[600px] px-4">
+        <div className="flex flex-col items-center w-full max-w-[700px] px-4">
           <div className="flex flex-col items-center mb-8">
             <Image src="/logo_emas.png" alt="RestoLink Logo" width={110} height={110} className="object-contain drop-shadow-lg mb-2" priority />
             <h1 className="text-4xl font-extrabold text-white tracking-wider mt-2 drop-shadow-md">
@@ -364,10 +237,18 @@ export default function OwnerPage() {
             </div>
           </div>
 
-          <div className="bg-[#2c4e80] w-full p-10 rounded-2xl shadow-2xl flex justify-center space-x-6 border border-[#ffc55a]/10">
-            <button onClick={() => setView('dashboard')} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-48 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
-              <LayoutDashboard className="w-14 h-14 mb-3" />
-              <span className="font-extrabold text-lg text-center leading-tight">Open<br/>Monitoring</span>
+          <div className="bg-[#2c4e80] w-full p-8 rounded-2xl shadow-2xl flex justify-center space-x-6 border border-[#ffc55a]/10">
+            <button onClick={() => { setView('dashboard'); setActiveTab('transactions'); }} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <ClipboardList className="w-12 h-12 mb-3" />
+              <span className="font-extrabold text-base text-center leading-tight">Transaction<br/>History</span>
+            </button>
+            <button onClick={() => { setView('dashboard'); setActiveTab('staff'); }} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <Users className="w-12 h-12 mb-3" />
+              <span className="font-extrabold text-base text-center leading-tight">Staff<br/>Directory</span>
+            </button>
+            <button onClick={() => { setView('dashboard'); setActiveTab('monitor'); }} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+              <Tv className="w-12 h-12 mb-3" />
+              <span className="font-extrabold text-base text-center leading-tight">Monitor<br/>Staff</span>
             </button>
           </div>
         </div>
@@ -381,7 +262,6 @@ export default function OwnerPage() {
   return (
     <div className="w-screen h-screen flex bg-[#00215e] font-sans overflow-hidden">
       {renderModal()}
-      {renderLayarMonitorModal()} {/* monitoring viewer modal */}
 
       {/* sidebar matching other employee portals aesthetic */}
       <div className="w-[280px] bg-[#00215e] flex flex-col items-center py-10 shrink-0 border-r border-[#2c4e80] z-30 shadow-[10px_0_20px_rgba(0,0,0,0.5)]">
@@ -406,7 +286,6 @@ export default function OwnerPage() {
         >
           <Users className="w-5 h-5 mr-2" /> Staff Data
         </button>
-        {/* added monitor staff button to sidebar matching Monitoring Staff.png */}
         <button
           onClick={() => setActiveTab('monitor')}
           className={`w-3/4 py-4 rounded-xl font-extrabold text-lg mb-6 shadow-lg transition-colors flex items-center justify-center ${activeTab === 'monitor' ? 'bg-[#ffc55a] text-[#00215e]' : 'bg-[#2c4e80] text-white hover:bg-[#ffc55a] hover:text-[#00215e]'}`}
@@ -422,7 +301,7 @@ export default function OwnerPage() {
       </div>
 
       <div className="flex-1 bg-[#2c4e80] p-10 rounded-tl-[40px] shadow-[inset_10px_10px_20px_rgba(0,0,0,0.4)] flex flex-col overflow-hidden relative">
-         
+
          {/* top summary statistics bar */}
          <div className="grid grid-cols-2 gap-6 mb-8 shrink-0">
            <div className="bg-[#00215e] p-6 rounded-2xl shadow-md border border-[#ffc55a]/20 flex items-center justify-between">
@@ -437,7 +316,7 @@ export default function OwnerPage() {
 
            <div className="bg-[#00215e] p-6 rounded-2xl shadow-md border border-[#ffc55a]/20 flex items-center justify-between">
              <div>
-               <p className="text-gray-300 text-xs font-bold uppercase tracking-widest mb-1">Active Staff Count</p>
+               <p className="text-gray-300 text-xs font-bold uppercase tracking-widest mb-1">Total Registered Staff</p>
                <h3 className="text-3xl font-black text-white">{listStaff.length} Members</h3>
              </div>
              <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
@@ -446,11 +325,11 @@ export default function OwnerPage() {
            </div>
          </div>
 
-         {/* main data table viewing area (read-only monitoring) */}
+         {/* main data viewing area */}
          <div className="flex-1 flex flex-col overflow-hidden bg-[#00215e]/40 p-6 rounded-2xl border border-white/10 backdrop-blur-sm relative z-10">
            <div className="flex justify-between items-center mb-6 shrink-0">
              <h3 className="text-white text-2xl font-extrabold tracking-wide uppercase">
-               {activeTab === 'transactions' ? 'Transaction History Record' : activeTab === 'staff' ? 'Staff Directory Record' : 'Monitoring Staff Screen'}
+               {activeTab === 'transactions' ? 'Transaction History Record' : activeTab === 'staff' ? 'Staff Directory Record' : 'Staff Screen Monitor'}
              </h3>
              <span className="text-xs text-gray-300 font-bold tracking-wider bg-white/10 px-3 py-1 rounded-lg uppercase">
                Read-Only Access
@@ -463,11 +342,11 @@ export default function OwnerPage() {
                <p className="text-center text-white font-bold text-xl animate-pulse">Loading secure records...</p>
              </div>
            ) : (
-             <div className="flex-1 overflow-y-auto pr-2 [scrollbar-width:thin]">
-               
+             <div className="flex-1 flex flex-col overflow-hidden">
+
                {/* tab 1: transactions history list */}
                {activeTab === 'transactions' && (
-                 <div className="space-y-4">
+                 <div className={`space-y-4 overflow-y-auto pr-2 ${customScrollbar}`}>
                    {listTransaksi.length === 0 ? (
                      <p className="text-center text-white/70 font-bold mt-10 italic">No transaction records found.</p>
                    ) : (
@@ -509,96 +388,347 @@ export default function OwnerPage() {
                  </div>
                )}
 
-               {/* tab 2: staff data directory directory */}
+               {/* tab 2: staff data directory */}
                {activeTab === 'staff' && (
-                 <div className="grid grid-cols-2 gap-4">
-                   {listStaff.length === 0 ? (
-                     <p className="col-span-2 text-center text-white/70 font-bold mt-10 italic">No staff records found.</p>
-                   ) : (
-                     listStaff.map((staff) => (
-                       <div key={staff.id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex items-center justify-between">
-                         <div className="flex items-center space-x-4">
-                           <div className="w-12 h-12 bg-[#00215e] text-[#ffc55a] rounded-xl flex items-center justify-center font-black text-lg shrink-0">
-                             {staff.namaPegawai.charAt(0)}
-                           </div>
-                           <div>
-                             <h4 className="font-extrabold text-[#00215e] text-base">{staff.namaPegawai}</h4>
-                             <p className="text-xs text-gray-500 font-bold">ID: {staff.id}</p>
-                           </div>
-                         </div>
-                         <span className="bg-[#ffc55a]/20 text-[#00215e] px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider shrink-0">
-                           {staff.jabatan}
-                         </span>
-                       </div>
-                     ))
-                   )}
-                 </div>
-               )}
-
-               {/* tab 3: monitor staff screens (main feature update) */}
-               {activeTab === 'monitor' && (
                  <div className="flex flex-col h-full overflow-hidden">
-                   
-                   {/* monitor filtering bar matching Monitoring Staff.png */}
-                   <div className="bg-[#00215e] p-4 rounded-xl mb-6 border border-[#ffc55a]/20 grid grid-cols-[1fr,auto,auto] gap-4 shrink-0">
+                   {/* staff directory filter bar */}
+                   <div className="bg-[#00215e] p-4 rounded-xl mb-6 border border-[#ffc55a]/20 grid grid-cols-[1fr,auto] gap-4 shrink-0">
                       <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                           type="text"
-                          placeholder="Search by staff name or ID..."
-                          value={searchTermMonitor}
-                          onChange={(e) => setSearchTermMonitor(e.target.value)}
+                          placeholder="Search staff by name..."
+                          value={searchTermStaff}
+                          onChange={(e) => setSearchTermStaff(e.target.value)}
                           className="w-full bg-[#2c4e80] border border-white/10 rounded-lg py-3 pl-12 pr-4 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#ffc55a]"
                         />
                       </div>
-                      <select value={roleFilterMonitor} onChange={(e) => setRoleFilterMonitor(e.target.value)} className="bg-[#2c4e80] border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#ffc55a]">
+                      <select value={roleFilterStaff} onChange={(e) => setRoleFilterStaff(e.target.value)} className="bg-[#2c4e80] border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#ffc55a]">
                          <option value="ALL">All Roles</option>
                          <option value="KASIR">Kasir</option>
                          <option value="PELAYAN">Pelayan</option>
                          <option value="KOKI">Koki</option>
-                      </select>
-                      <select value={statusFilterMonitor} onChange={(e) => setStatusFilterMonitor(e.target.value)} className="bg-[#2c4e80] border border-white/10 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#ffc55a]">
-                         <option value="ALL">All Status</option>
-                         <option value="ONLINE">Online</option>
-                         <option value="OFFLINE">ga hadir</option>
+                         <option value="PEMILIK">Pemilik</option>
                       </select>
                    </div>
 
-                   {/* staff monitoring grid matching Monitoring Staff.png layout */}
-                   <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-3 gap-6">
-                      {filteredStaffMonitor.length === 0 ? (
-                        <p className="col-span-3 text-center text-white/70 font-bold mt-10 italic">No staff found matching filters.</p>
-                      ) : (
-                        filteredStaffMonitor.map(staff => (
-                          <div key={staff.id} className="bg-white rounded-2xl p-6 shadow-md border border-gray-100 flex flex-col">
-                             <div className="flex items-center space-x-4 mb-4 border-b border-gray-100 pb-4">
-                                <div className="w-16 h-16 bg-[#00215e] text-[#ffc55a] rounded-2xl flex items-center justify-center font-black text-2xl shrink-0">
-                                   {staff.namaPegawai.charAt(0)}
-                                </div>
-                                <div className="flex-1">
-                                   <h4 className="font-extrabold text-[#00215e] text-lg leading-snug">{staff.namaPegawai}</h4>
-                                   <p className="text-xs text-gray-500 font-bold">ID: {staff.id}</p>
-                                   <div className="flex justify-between items-center mt-1.5">
-                                      <span className="bg-[#ffc55a]/20 text-[#00215e] text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider">{staff.jabatan}</span>
-                                      <div className="flex items-center space-x-1.5">
-                                         <div className={`w-2.5 h-2.5 rounded-full ${staff.isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                         <span className={`text-xs font-bold ${staff.isOnline ? 'text-green-600' : 'text-red-600'}`}>{staff.isOnline ? 'Online' : 'ga hadir'}</span>
-                                      </div>
-                                   </div>
-                                </div>
+                   <div className={`grid grid-cols-2 gap-4 overflow-y-auto pr-2 ${customScrollbar}`}>
+                     {filteredStaffList.length === 0 ? (
+                       <p className="col-span-2 text-center text-white/70 font-bold mt-10 italic">No staff records found.</p>
+                     ) : (
+                       filteredStaffList.map((staff) => (
+                         <div key={staff.id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex items-center justify-between">
+                           <div className="flex items-center space-x-4">
+                             <div className="w-12 h-12 bg-[#00215e] text-[#ffc55a] rounded-xl flex items-center justify-center font-black text-lg shrink-0">
+                               {staff.namaPegawai.charAt(0)}
                              </div>
-                             {/* added action button to check screen, strictly read-only for monitoring */}
-                             <button
-                               onClick={() => setSelectedMonitoringStaff(staff)}
-                               disabled={!staff.isOnline}
-                               className={`w-full py-3 rounded-xl font-extrabold text-sm uppercase tracking-widest transition-all ${staff.isOnline ? 'bg-[#ffc55a] text-[#00215e] hover:bg-yellow-400' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
-                             >
-                                Cek Layar
-                             </button>
-                          </div>
-                        ))
-                      )}
+                             <div>
+                               <h4 className="font-extrabold text-[#00215e] text-base">{staff.namaPegawai}</h4>
+                               <p className="text-xs text-gray-500 font-bold">ID: {staff.id}</p>
+                             </div>
+                           </div>
+                           <span className="bg-[#ffc55a]/20 text-[#00215e] px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider shrink-0">
+                             {staff.jabatan}
+                           </span>
+                         </div>
+                       ))
+                     )}
                    </div>
+                 </div>
+               )}
+
+               {/* tab 3: monitor staff screens (read-only views copied directly from kasir, pelayan, and koki) */}
+               {activeTab === 'monitor' && (
+                 <div className="flex flex-col h-full overflow-hidden">
+                   {/* monitor role selector bar */}
+                   <div className="flex space-x-3 mb-6 shrink-0 bg-[#00215e] p-2 rounded-xl border border-[#ffc55a]/20">
+                     <button
+                       onClick={() => setMonitorSubTab('kasir')}
+                       className={`flex-1 py-3 px-4 rounded-lg font-extrabold text-sm uppercase tracking-wider flex items-center justify-center transition-all ${
+                         monitorSubTab === 'kasir' ? 'bg-[#ffc55a] text-[#00215e] shadow-md' : 'text-gray-300 hover:bg-white/10'
+                       }`}
+                     >
+                       <ReceiptText className="w-4 h-4 mr-2" /> Kasir Monitor
+                     </button>
+                     <button
+                       onClick={() => setMonitorSubTab('pelayan')}
+                       className={`flex-1 py-3 px-4 rounded-lg font-extrabold text-sm uppercase tracking-wider flex items-center justify-center transition-all ${
+                         monitorSubTab === 'pelayan' ? 'bg-[#ffc55a] text-[#00215e] shadow-md' : 'text-gray-300 hover:bg-white/10'
+                       }`}
+                     >
+                       <GlassWater className="w-4 h-4 mr-2" /> Pelayan Monitor
+                     </button>
+                     <button
+                       onClick={() => setMonitorSubTab('koki')}
+                       className={`flex-1 py-3 px-4 rounded-lg font-extrabold text-sm uppercase tracking-wider flex items-center justify-center transition-all ${
+                         monitorSubTab === 'koki' ? 'bg-[#ffc55a] text-[#00215e] shadow-md' : 'text-gray-300 hover:bg-white/10'
+                       }`}
+                     >
+                       <ChefHat className="w-4 h-4 mr-2" /> Koki Monitor
+                     </button>
+                   </div>
+
+                   {/* sub-view 1: kasir screen monitor */}
+                   {monitorSubTab === 'kasir' && (
+                     <div className="flex-1 flex flex-col overflow-hidden">
+                       <div className="flex justify-between items-center mb-4 shrink-0">
+                         <h4 className="text-white text-xl font-extrabold tracking-wide uppercase flex items-center">
+                           <ReceiptText className="w-5 h-5 mr-2 text-[#ffc55a]" /> Active Cashier Orders (Read-Only)
+                         </h4>
+                         <span className="text-xs bg-red-500/20 text-red-200 border border-red-500/50 px-3 py-1 rounded-lg font-bold">
+                           Read-Only Monitor Mode
+                         </span>
+                       </div>
+
+                       <div className="flex space-x-4 mb-3 pr-2">
+                         <div className="bg-[#00215e] w-28 text-white font-extrabold text-sm text-center py-3 rounded-xl shadow-md shrink-0 uppercase tracking-wide">
+                           Table
+                         </div>
+                         <div className="bg-[#00215e] w-56 text-white font-extrabold text-sm text-left pl-4 py-3 rounded-xl shadow-md shrink-0 uppercase tracking-wide">
+                           Customer
+                         </div>
+                         <div className="flex-1 bg-[#00215e] text-white font-extrabold text-sm text-left pl-4 py-3 rounded-xl shadow-md uppercase tracking-wide">
+                           Total Bill Amount
+                         </div>
+                         <div className="bg-[#00215e] w-40 text-white font-extrabold text-sm text-center py-3 rounded-xl shadow-md shrink-0 uppercase tracking-wide">
+                           Status
+                         </div>
+                       </div>
+
+                       <div className={`space-y-3 overflow-y-auto pr-2 pb-4 ${customScrollbar}`}>
+                         {listTransaksi.filter(t => t.statusTagihan !== 'DONE').length === 0 ? (
+                           <p className="text-center text-white/70 font-bold mt-10 italic">No active cashier transactions.</p>
+                         ) : (
+                           listTransaksi.filter(t => t.statusTagihan !== 'DONE').map((trx) => {
+                             const isPaid = trx.statusTagihan === 'PAID';
+                             const subtotal = trx.detailPesanan.reduce((acc, item) => acc + item.subtotal, 0);
+                             const total = subtotal + (subtotal * 0.1);
+
+                             return (
+                               <div
+                                 key={trx.noNota}
+                                 className="flex space-x-4 items-stretch bg-white/5 border border-white/10 rounded-xl p-2"
+                               >
+                                 <div className="bg-[#00215e] w-28 text-[#ffc55a] font-extrabold text-2xl flex items-center justify-center py-3 rounded-xl shadow-md shrink-0">
+                                   {trx.noMeja}
+                                 </div>
+                                 <div className="bg-white w-56 text-[#00215e] font-extrabold text-base flex items-center text-left pl-4 py-3 rounded-xl shadow-md shrink-0 truncate">
+                                   {trx.pelanggan?.namaPelanggan || 'Guest'}
+                                 </div>
+                                 <div className="flex-1 bg-white text-[#00215e] font-extrabold text-xl flex items-center justify-between px-4 py-3 rounded-xl shadow-md">
+                                   <span>Rp. {total.toLocaleString('id-ID')}</span>
+                                   <span className="text-xs text-gray-500 font-bold">Nota: {trx.noNota}</span>
+                                 </div>
+                                 <div className={`w-40 font-extrabold text-base flex items-center justify-center py-3 rounded-xl shadow-md uppercase tracking-widest shrink-0 ${
+                                   isPaid ? 'bg-[#588157] text-white' : 'bg-[#fc4100] text-white'
+                                 }`}>
+                                   {isPaid ? 'Paid' : 'Unpaid'}
+                                 </div>
+                               </div>
+                             );
+                           })
+                         )}
+                       </div>
+                     </div>
+                   )}
+
+                   {/* sub-view 2: pelayan screen monitor */}
+                   {monitorSubTab === 'pelayan' && (
+                     <div className="flex-1 flex overflow-hidden space-x-6 relative">
+                       {/* left map area */}
+                       <div className="flex-1 flex flex-col overflow-hidden">
+                         <div className="flex justify-between items-center mb-4 shrink-0">
+                           <h4 className="text-white text-xl font-extrabold tracking-wide uppercase flex items-center">
+                             <GlassWater className="w-5 h-5 mr-2 text-[#ffc55a]" /> Waiter Floor Map Monitor (Read-Only)
+                           </h4>
+                           <div className="flex items-center text-[10px] uppercase font-bold tracking-widest text-white">
+                             <span className="w-3 h-3 rounded bg-[#2c4e80] border border-white mr-1.5"></span> Free
+                             <span className="w-3 h-3 rounded bg-red-500/20 border border-red-500 ml-3 mr-1.5"></span> Occupied
+                             <span className="w-3 h-3 rounded bg-green-500/20 border border-green-500 ml-3 mr-1.5"></span> Ready
+                           </div>
+                         </div>
+
+                         <div className={`flex-1 overflow-y-auto ${customScrollbar} bg-[#00215e]/30 rounded-2xl border border-white/10 p-6`}>
+                           {listMeja.length === 0 ? (
+                             <p className="text-center text-white font-bold text-xl animate-pulse">Loading Floor Plan...</p>
+                           ) : (
+                             <div className="grid grid-cols-4 gap-4">
+                               {listMeja.map((meja) => {
+                                 const order = listTransaksi.find(t => t.noMeja === meja.noMeja && t.statusPesanan !== 'SELESAI' && t.statusPesanan !== 'DIBATALKAN');
+                                 const isAvailable = !order;
+
+                                 let bgClass = isAvailable ? 'bg-[#2c4e80]/80 border-white/20' : 'bg-red-500/10 border-red-500/50';
+                                 let textClass = isAvailable ? 'text-white' : 'text-red-400';
+                                 let badge = null;
+
+                                 if (order) {
+                                   if (order.statusPesanan === 'SELESAI') {
+                                     bgClass = 'bg-green-500/20 border-green-500';
+                                     textClass = 'text-green-400';
+                                     badge = <span className="absolute -top-2 -right-2 bg-green-500 text-[#00215e] text-[9px] font-black px-2 py-0.5 rounded shadow">SERVE</span>;
+                                   } else if (order.statusPesanan === 'DIPROSES') {
+                                     bgClass = 'bg-[#ffc55a]/10 border-[#ffc55a]/50';
+                                     textClass = 'text-[#ffc55a]';
+                                     badge = <span className="absolute -top-2 -right-2 bg-[#ffc55a] text-[#00215e] text-[8px] font-black px-1.5 py-0.5 rounded">COOKING</span>;
+                                   }
+                                 }
+
+                                 const isSelected = selectedMonitorTable === meja.noMeja;
+
+                                 return (
+                                   <div
+                                     key={meja.noMeja}
+                                     onClick={() => setSelectedMonitorTable(meja.noMeja)}
+                                     className={`relative aspect-square border-2 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105 backdrop-blur-md ${bgClass} ${isSelected ? 'ring-4 ring-white/50 scale-105 z-20' : 'z-10'}`}
+                                   >
+                                     {badge}
+                                     <span className={`text-3xl font-black mb-1 ${textClass}`}>{meja.noMeja}</span>
+                                     <span className={`text-[9px] font-bold tracking-widest uppercase px-2 py-0.5 rounded opacity-80 ${isAvailable ? 'bg-white/10' : 'bg-red-500/20'}`}>
+                                       {order ? 'Occupied' : 'Free'}
+                                     </span>
+                                   </div>
+                                 );
+                               })}
+                             </div>
+                           )}
+                         </div>
+                       </div>
+
+                       {/* right detail panel */}
+                       <div className="w-[320px] bg-[#00215e]/90 backdrop-blur-xl border border-[#ffc55a]/20 rounded-2xl flex flex-col shrink-0 overflow-hidden">
+                         {!selectedMonitorTable ? (
+                           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-40">
+                             <p className="text-sm text-white font-extrabold uppercase tracking-widest">Select a table on map to view order details</p>
+                           </div>
+                         ) : (
+                           <div className="flex flex-col h-full">
+                             <div className="p-5 border-b border-[#ffc55a]/20 bg-black/20">
+                               <div className="flex justify-between items-center mb-1">
+                                 <h5 className="text-3xl text-white font-black">T-{selectedMonitorTable}</h5>
+                                 {(() => {
+                                   const order = listTransaksi.find(t => t.noMeja === selectedMonitorTable && t.statusPesanan !== 'SELESAI' && t.statusPesanan !== 'DIBATALKAN');
+                                   return order ? (
+                                     <span className="px-2.5 py-1 rounded text-[10px] font-black uppercase bg-[#ffc55a] text-[#00215e]">
+                                       {order.statusPesanan}
+                                     </span>
+                                   ) : null;
+                                 })()}
+                               </div>
+                               <p className="text-xs text-gray-300 font-bold">
+                                 {(() => {
+                                   const order = listTransaksi.find(t => t.noMeja === selectedMonitorTable && t.statusPesanan !== 'SELESAI' && t.statusPesanan !== 'DIBATALKAN');
+                                   return order ? `Guest: ${order.pelanggan?.namaPelanggan || 'Guest'}` : 'No Active Order';
+                                 })()}
+                               </p>
+                             </div>
+
+                             <div className={`flex-1 p-5 overflow-y-auto ${customScrollbar}`}>
+                               {(() => {
+                                 const order = listTransaksi.find(t => t.noMeja === selectedMonitorTable && t.statusPesanan !== 'SELESAI' && t.statusPesanan !== 'DIBATALKAN');
+                                 if (!order) return <p className="text-xs text-gray-400 font-bold italic text-center mt-10">Table is empty.</p>;
+
+                                 return (
+                                   <div className="space-y-3">
+                                     <p className="text-[10px] text-gray-300 font-bold uppercase tracking-wider">Ordered Items</p>
+                                     {order.detailPesanan.map((item, idx) => (
+                                       <div key={idx} className="bg-white/10 p-3 rounded-xl text-white flex justify-between items-start text-xs">
+                                         <div>
+                                           <p className="font-extrabold">{item.menu.namaMenu}</p>
+                                         </div>
+                                         <span className="bg-[#ffc55a] text-[#00215e] font-black px-2 py-0.5 rounded text-[10px]">x{item.jumlahPesanan}</span>
+                                       </div>
+                                     ))}
+                                   </div>
+                                 );
+                               })()}
+                             </div>
+
+                             <div className="p-4 border-t border-white/10 bg-black/20 text-center">
+                               <span className="text-[10px] text-red-300 font-bold uppercase tracking-wider">
+                                 Read-Only Waiter View
+                               </span>
+                             </div>
+                           </div>
+                         )}
+                       </div>
+                     </div>
+                   )}
+
+                   {/* sub-view 3: koki screen monitor */}
+                   {monitorSubTab === 'koki' && (
+                     <div className="flex-1 flex space-x-6 overflow-hidden">
+                       {/* left: kitchen ticket view */}
+                       <div className="flex-1 flex flex-col overflow-hidden">
+                         <div className="flex justify-between items-center mb-4 shrink-0">
+                           <h4 className="text-white text-xl font-extrabold tracking-wide uppercase flex items-center">
+                             <ChefHat className="w-5 h-5 mr-2 text-[#ffc55a]" /> Kitchen Tickets (Read-Only)
+                           </h4>
+                         </div>
+
+                         <div className={`space-y-4 overflow-y-auto pr-2 pb-4 ${customScrollbar}`}>
+                           {listTransaksi.filter(t => t.statusPesanan !== 'SELESAI' && t.statusPesanan !== 'SIAP' && t.statusPesanan !== 'DIBATALKAN').length === 0 ? (
+                             <p className="text-center text-white/70 font-bold mt-10 italic">No incoming kitchen orders in queue.</p>
+                           ) : (
+                             listTransaksi.filter(t => t.statusPesanan !== 'SELESAI' && t.statusPesanan !== 'SIAP' && t.statusPesanan !== 'DIBATALKAN').map(pesanan => (
+                               <div key={pesanan.noNota} className="flex space-x-3 bg-white/5 border border-white/10 p-3 rounded-xl">
+                                 <div className="bg-[#00215e] w-28 flex flex-col items-center justify-center rounded-xl text-[#ffc55a] shrink-0 shadow-md p-3">
+                                   <span className="text-[10px] text-gray-300 uppercase font-bold">Table</span>
+                                   <span className="font-extrabold text-3xl">{pesanan.noMeja}</span>
+                                 </div>
+
+                                 <div className="flex-1 space-y-2">
+                                   {pesanan.detailPesanan.map(item => (
+                                     <div key={item.idDetail} className="bg-white p-3 rounded-lg text-[#00215e] font-extrabold text-sm flex items-center justify-between shadow-sm">
+                                       <span>{item.menu.namaMenu}</span>
+                                       <span className="text-[#fc4100] text-xs bg-gray-100 px-3 py-1 rounded-md">x{item.jumlahPesanan}</span>
+                                     </div>
+                                   ))}
+                                 </div>
+
+                                 <div className="w-36 flex flex-col justify-center items-center bg-[#00215e] rounded-xl p-3 text-center shrink-0">
+                                   <span className="text-[10px] text-gray-300 font-bold uppercase mb-1">Status</span>
+                                   <span className="bg-[#ffc55a] text-[#00215e] text-xs font-black px-2.5 py-1 rounded uppercase">
+                                     {pesanan.statusPesanan}
+                                   </span>
+                                 </div>
+                               </div>
+                             ))
+                           )}
+                         </div>
+                       </div>
+
+                       {/* right: raw material inventory view */}
+                       <div className="w-[320px] bg-[#00215e]/80 border border-[#ffc55a]/20 p-5 rounded-2xl flex flex-col shrink-0 overflow-hidden">
+                         <h5 className="text-white text-base font-extrabold uppercase mb-4 tracking-wider flex items-center">
+                           Raw Material Inventory
+                         </h5>
+                         <div className={`space-y-3 overflow-y-auto pr-1 flex-1 ${customScrollbar}`}>
+                           {listBahan.length === 0 ? (
+                             <p className="text-xs text-gray-400 font-bold italic text-center mt-6">No inventory data.</p>
+                           ) : (
+                             listBahan.map(bahan => {
+                               const isReady = bahan.statusBahan === 'TERSEDIA';
+                               return (
+                                 <div key={bahan.id} className="bg-white rounded-lg p-3 text-[#00215e] font-extrabold text-xs flex items-center justify-between shadow-sm">
+                                   <span className="truncate pr-2">{bahan.namaBahan}</span>
+                                   <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase shrink-0 ${
+                                     isReady ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                   }`}>
+                                     {isReady ? 'Ready' : 'Empty'}
+                                   </span>
+                                 </div>
+                               );
+                             })
+                           )}
+                         </div>
+                         <div className="mt-3 pt-3 border-t border-white/10 text-center">
+                           <span className="text-[10px] text-red-300 font-bold uppercase tracking-wider">
+                             Read-Only Inventory View
+                           </span>
+                         </div>
+                       </div>
+                     </div>
+                   )}
                  </div>
                )}
              </div>
