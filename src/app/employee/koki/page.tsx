@@ -168,6 +168,26 @@ export default function KokiPage() {
     return pesanan.detailPesanan.every((item) => itemReadyState[item.idDetail]);
   };
 
+  // handle process order action (marks order as cooking)
+  async function handleProcessOrder(noNota: string) {
+    try {
+      const res = await fetch('/api/pesanan', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ noNota, statusPesanan: 'DIPROSES' }),
+      });
+      const data = await res.json();
+
+      if (data.sukses) {
+        fetchOrders(false);
+      } else {
+        showModal('alert', data.pesan || 'Failed to process order.');
+      }
+    } catch (err) {
+      showModal('alert', 'A network error occurred while processing the order.');
+    }
+  }
+
   async function handleMarkOrderReady(noNota: string) {
     showModal('confirm', 'Are you sure you want to mark this entire order as ready to be served?', async () => {
       closeModal();
@@ -437,13 +457,22 @@ export default function KokiPage() {
                          </div>
 
                          <div className="w-64 flex flex-col space-y-3 shrink-0">
-                           <button
-                              onClick={() => { if(isReady) handleMarkOrderReady(pesanan.noNota) }}
-                              disabled={!isReady}
-                              className={`flex-1 rounded-xl font-extrabold text-3xl flex items-center justify-center shadow-md transition-all uppercase tracking-widest ${isReady ? 'bg-[#588157] text-white hover:opacity-90 cursor-pointer shadow-[0_0_15px_rgba(88,129,87,0.6)]' : 'bg-gray-400 text-gray-200 opacity-90 cursor-not-allowed'}`}
-                           >
-                              Ready
-                           </button>
+                           {pesanan.statusPesanan === 'MENUNGGU' ? (
+                             <button
+                                onClick={() => handleProcessOrder(pesanan.noNota)}
+                                className="flex-1 rounded-xl font-extrabold text-3xl flex items-center justify-center shadow-md transition-all uppercase tracking-widest bg-[#ffc55a] text-[#00215e] hover:bg-yellow-400"
+                             >
+                                Cook
+                             </button>
+                           ) : (
+                             <button
+                                onClick={() => { if(isReady) handleMarkOrderReady(pesanan.noNota) }}
+                                disabled={!isReady}
+                                className={`flex-1 rounded-xl font-extrabold text-3xl flex items-center justify-center shadow-md transition-all uppercase tracking-widest ${isReady ? 'bg-[#588157] text-white hover:opacity-90 cursor-pointer shadow-[0_0_15px_rgba(88,129,87,0.6)]' : 'bg-gray-400 text-gray-200 opacity-90 cursor-not-allowed'}`}
+                             >
+                                Ready
+                             </button>
+                           )}
                            <button
                               onClick={() => handleRejectOrder(pesanan.noNota)}
                               className={`py-3 rounded-xl font-bold text-sm flex items-center justify-center shadow-md transition-all uppercase tracking-widest ${hasMissingIngredient ? 'bg-red-600 text-white hover:bg-red-700 animate-pulse' : 'bg-red-800 text-red-200 hover:bg-red-700'}`}

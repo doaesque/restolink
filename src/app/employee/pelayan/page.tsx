@@ -129,7 +129,7 @@ export default function PelayanPage() {
   async function fetchMenu() {
     try {
       // cache busting to guarantee real-time stock updates from api
-      const res = await fetch('/api/menu', { 
+      const res = await fetch('/api/menu', {
         cache: 'no-store',
         headers: {
           'Cache-Control': 'no-cache',
@@ -460,7 +460,8 @@ export default function PelayanPage() {
                         let badge = null;
 
                         if (order) {
-                          if (order.statusPesanan === 'SELESAI') {
+                          // changed SELESAI to SIAP to correctly read kitchen ready status
+                          if (order.statusPesanan === 'SIAP') {
                              bgClass = 'bg-green-500/20 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.3)]';
                              textClass = 'text-green-400';
                              animationClass = 'animate-pulse';
@@ -507,7 +508,8 @@ export default function PelayanPage() {
                         <h2 className="text-5xl text-white font-black tracking-widest">T-{selectedTable}</h2>
                         {activeOrder && (
                           <span className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest ${
-                            activeOrder.statusPesanan === 'SELESAI' ? 'bg-green-500 text-[#00215e]' :
+                            // changed SELESAI to SIAP
+                            activeOrder.statusPesanan === 'SIAP' ? 'bg-green-500 text-[#00215e]' :
                             activeOrder.statusPesanan === 'DIPROSES' ? 'bg-[#ffc55a] text-[#00215e]' :
                             'bg-red-500 text-white'
                           }`}>
@@ -540,7 +542,8 @@ export default function PelayanPage() {
                             </div>
                           </div>
 
-                          {activeOrder.statusPesanan === 'SELESAI' && (
+                          {/* changed SELESAI to SIAP so waiter can see kitchen is done */}
+                          {activeOrder.statusPesanan === 'SIAP' && (
                             <div className="bg-green-500/10 border border-green-500/40 p-5 rounded-2xl flex items-center space-x-4 relative overflow-hidden group cursor-pointer" onClick={() => handleServeOrder(activeOrder.noNota)}>
                               <div className="absolute inset-0 bg-green-500/20 group-hover:bg-green-500/30 transition-colors"></div>
                               <CheckCircle2 className="w-10 h-10 text-green-400 shrink-0 relative z-10" />
@@ -737,7 +740,8 @@ export default function PelayanPage() {
                  <p className="text-center text-white/70 font-bold mt-10 text-xl italic">No active orders currently.</p>
                ) : (
                  listPesanan.map(pesanan => {
-                   const isReady = pesanan.statusPesanan === 'SELESAI';
+                   // changed SELESAI to SIAP
+                   const isReady = pesanan.statusPesanan === 'SIAP';
                    const isCooking = pesanan.statusPesanan === 'DIPROSES';
                    return (
                      <div key={pesanan.noNota} className="flex space-x-4">
