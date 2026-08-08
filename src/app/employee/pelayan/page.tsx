@@ -221,7 +221,7 @@ export default function PelayanPage() {
 
         const data = await res.json();
 
-        if (data.sukses || data.id) {
+        if (data.sukses || data.noNota) {
           // reset form
           setSelectedTable(null);
           setCustomerName('');
@@ -282,6 +282,17 @@ export default function PelayanPage() {
   };
 
   const activeOrder = selectedTable ? getTableOrder(selectedTable) : null;
+
+  // helper to select table and auto populate customer name if active order exists
+  const handleSelectTable = (tableNo: number) => {
+    setSelectedTable(tableNo);
+    const existingOrder = getTableOrder(tableNo);
+    if (existingOrder?.pelanggan?.namaPelanggan) {
+      setCustomerName(existingOrder.pelanggan.namaPelanggan);
+    } else {
+      setCustomerName(''); // reset customer name when switching to an empty table
+    }
+  };
 
   // ---------------------------------------------------------
   // 0. custom modal component
@@ -360,7 +371,7 @@ export default function PelayanPage() {
               <LayoutDashboard className="w-14 h-14 mb-3" />
               <span className="font-extrabold text-lg text-center leading-tight">Table<br/>Status</span>
             </button>
-            <button onClick={() => setView('new_order')} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
+            <button onClick={() => { setView('new_order'); setSelectedTable(null); setCustomerName(''); }} className="bg-white text-[#00215e] p-6 rounded-xl flex flex-col items-center w-40 h-40 justify-center shadow-lg hover:bg-[#ffc55a] transition-all hover:-translate-y-1">
               <PlusCircle className="w-14 h-14 mb-3" />
               <span className="font-extrabold text-lg text-center leading-tight">Create<br/>Order</span>
             </button>
@@ -399,7 +410,7 @@ export default function PelayanPage() {
           <LayoutDashboard className="w-5 h-5 mr-2" /> Floor Map
         </button>
         <button
-          onClick={() => { setView('new_order'); setSelectedTable(null); }}
+          onClick={() => { setView('new_order'); setSelectedTable(null); setCustomerName(''); }}
           className={`w-3/4 py-4 rounded-xl font-extrabold text-lg mb-4 shadow-lg transition-colors flex items-center justify-center ${view === 'new_order' ? 'bg-[#ffc55a] text-[#00215e]' : 'bg-[#2c4e80] text-white hover:bg-[#ffc55a] hover:text-[#00215e]'}`}
         >
           <PlusCircle className="w-5 h-5 mr-2" /> New Order
@@ -445,7 +456,7 @@ export default function PelayanPage() {
                     <div className="grid grid-cols-5 gap-6 max-w-5xl w-full">
                       {listMeja.map((meja) => {
                         const order = getTableOrder(meja.noMeja);
-                        let isAvailable = meja.status === 'TERSEDIA' && !order;
+                        let isAvailable = !order;
 
                         let bgClass = isAvailable ? 'bg-[#2c4e80]/80 border-white/20' : 'bg-red-500/10 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.2)]';
                         let textClass = isAvailable ? 'text-white' : 'text-red-400';
@@ -470,7 +481,7 @@ export default function PelayanPage() {
                         return (
                           <div
                             key={meja.noMeja}
-                            onClick={() => setSelectedTable(meja.noMeja)}
+                            onClick={() => handleSelectTable(meja.noMeja)}
                             className={`relative aspect-square border-2 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all hover:scale-105 backdrop-blur-md ${bgClass} ${isSelected ? 'ring-4 ring-white/50 scale-105 z-20' : 'z-10'} ${animationClass}`}
                           >
                             {badge}
@@ -557,16 +568,19 @@ export default function PelayanPage() {
                       )}
                     </div>
 
-                    {!activeOrder && (
-                       <div className="p-8 border-t border-[#ffc55a]/20 bg-black/20 shrink-0">
-                         <button
-                           onClick={() => setView('new_order')}
-                           className="w-full py-4 rounded-xl font-extrabold text-[#00215e] text-lg uppercase tracking-widest bg-[#ffc55a] hover:bg-yellow-400 transition-colors shadow-lg flex justify-center items-center"
-                         >
-                           <PlusCircle className="w-5 h-5 mr-2"/> Take Order
-                         </button>
-                       </div>
-                    )}
+                    <div className="p-8 border-t border-[#ffc55a]/20 bg-black/20 shrink-0">
+                      <button
+                        onClick={() => {
+                          setView('new_order');
+                          if (activeOrder?.pelanggan?.namaPelanggan) {
+                            setCustomerName(activeOrder.pelanggan.namaPelanggan);
+                          }
+                        }}
+                        className="w-full py-4 rounded-xl font-extrabold text-[#00215e] text-lg uppercase tracking-widest bg-[#ffc55a] hover:bg-yellow-400 transition-colors shadow-lg flex justify-center items-center"
+                      >
+                        <PlusCircle className="w-5 h-5 mr-2"/> {activeOrder ? 'Add Another Order' : 'Take Order'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -624,12 +638,15 @@ export default function PelayanPage() {
                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Table No.</label>
                      <select
                        value={selectedTable || ''}
-                       onChange={(e) => setSelectedTable(parseInt(e.target.value))}
+                       onChange={(e) => {
+                         const tableNo = parseInt(e.target.value);
+                         handleSelectTable(tableNo);
+                       }}
                        className="w-full bg-gray-50 border border-gray-300 rounded-lg p-2.5 font-extrabold text-[#00215e] focus:outline-none focus:ring-2 focus:ring-[#ffc55a]"
                      >
                        <option value="" disabled>Select</option>
                        {listMeja.map(m => (
-                         <option key={m.noMeja} value={m.noMeja}>{m.noMeja} {m.status !== 'TERSEDIA' ? '(Occupied)' : ''}</option>
+                         <option key={m.noMeja} value={m.noMeja}>{m.noMeja} {getTableOrder(m.noMeja) ? '(Occupied)' : ''}</option>
                        ))}
                      </select>
                    </div>
@@ -683,7 +700,7 @@ export default function PelayanPage() {
                              placeholder="Add notes (e.g., No onions, extra spicy)..."
                              value={item.catatan || ''}
                              onChange={(e) => updateCartNote(item.idMenu, e.target.value)}
-                             className="w-full bg-white border border-gray-200 rounded text-xs py-1.5 pl-8 pr-2 focus:outline-none focus:border-[#ffc55a]"
+                             className="w-full bg-white border border-gray-200 rounded text-gray-800 text-xs py-1.5 pl-8 pr-2 focus:outline-none focus:border-[#ffc55a]"
                            />
                          </div>
                        </div>
