@@ -54,7 +54,7 @@ function CustomerOrderContent() {
   const [isNameLocked, setIsNameLocked] = useState(false);
   const [cart, setCart] = useState<{ id: string; qty: number }[]>([]);
 
-  // session state for table orders (saved robustly in localStorage)
+  // session state for table orders (saved robustly in sessionstorage)
   const [activeOrders, setActiveOrders] = useState<ActiveOrderItem[]>([]);
   const [currentNota, setCurrentNota] = useState<string | null>(null);
 
@@ -71,11 +71,11 @@ function CustomerOrderContent() {
   // checkout snapshot to freeze receipt data so background state changes don't glitch the ui
   const [checkoutSession, setCheckoutSession] = useState<CheckoutSession | null>(null);
 
-  // load customer session from robust localStorage to prevent reset on tab close or refresh
+  // load customer session from sessionstorage so new tabs act as fresh devices but survive refreshes
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedName = localStorage.getItem('customerName');
-      const storedLock = localStorage.getItem('isNameLocked');
+      const storedName = sessionStorage.getItem('customerName');
+      const storedLock = sessionStorage.getItem('isNameLocked');
       if (storedName) setCustomerName(storedName);
       if (storedLock === 'true') setIsNameLocked(true);
     }
@@ -84,7 +84,7 @@ function CustomerOrderContent() {
   // load active orders specifically for the selected table when it changes
   useEffect(() => {
     if (selectedTable && typeof window !== 'undefined') {
-      const storedOrders = localStorage.getItem(`activeOrders_tbl_${selectedTable}`);
+      const storedOrders = sessionStorage.getItem(`activeOrders_tbl_${selectedTable}`);
       if (storedOrders) {
         try {
           setActiveOrders(JSON.parse(storedOrders));
@@ -113,7 +113,7 @@ function CustomerOrderContent() {
 
         setTables(fetchedTables);
 
-        // check if current active table is marked as TERSEDIA (cleared by cashier)
+        // check if current active table is marked as tersedia (cleared by cashier)
         if (selectedTable) {
           const currentTbl = fetchedTables.find((t) => t.noMeja.toString() === selectedTable);
           if (currentTbl && currentTbl.status === 'TERSEDIA') {
@@ -122,9 +122,9 @@ function CustomerOrderContent() {
              setIsNameLocked(false);
              setCustomerName('');
              if (typeof window !== 'undefined') {
-                localStorage.removeItem(`activeOrders_tbl_${selectedTable}`);
-                localStorage.removeItem('customerName');
-                localStorage.removeItem('isNameLocked');
+                sessionStorage.removeItem(`activeOrders_tbl_${selectedTable}`);
+                sessionStorage.removeItem('customerName');
+                sessionStorage.removeItem('isNameLocked');
              }
           }
         }
@@ -236,8 +236,8 @@ function CustomerOrderContent() {
     if (customerName.trim() && selectedTable) {
       setIsNameLocked(true);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('customerName', customerName.trim());
-        localStorage.setItem('isNameLocked', 'true');
+        sessionStorage.setItem('customerName', customerName.trim());
+        sessionStorage.setItem('isNameLocked', 'true');
       }
       setShowWelcome(false);
     }
@@ -279,7 +279,7 @@ function CustomerOrderContent() {
         setCurrentNota(generatedNota);
 
         if (result.sukses || result.id || result.noNota) {
-          // PAY LATER flow: add strictly to localStorage session, no receipt needed
+          // pay later flow: add strictly to sessionstorage session, no receipt needed
           if (statusTagihan === 'UNPAID' && !paymentMethod) {
             const newItems: ActiveOrderItem[] = cart.map(item => {
               const m = menus.find(x => x.id === item.id)!;
@@ -289,7 +289,7 @@ function CustomerOrderContent() {
             setActiveOrders(prev => {
               const updated = [...prev, ...newItems];
               if (typeof window !== 'undefined') {
-                 localStorage.setItem(`activeOrders_tbl_${selectedTable}`, JSON.stringify(updated));
+                 sessionStorage.setItem(`activeOrders_tbl_${selectedTable}`, JSON.stringify(updated));
               }
               return updated;
             });
@@ -298,7 +298,7 @@ function CustomerOrderContent() {
             setOrderSuccess('UNPAID');
             setCart([]);
           } else if (paymentMethod) {
-             // PAY NOW flow: freeze the cart items into a checkout session to protect against activeOrders collisions
+             // pay now flow: freeze the cart items into a checkout session to protect against activeorders collisions
              setCheckoutSession({
                items: cart.map(item => {
                   const m = menus.find(x => x.id === item.id)!;
@@ -320,7 +320,7 @@ function CustomerOrderContent() {
           alert(result.pesan || 'Failed to process order. Please try again.');
         }
       } else if (activeOrders.length > 0 && paymentMethod) {
-        // PAY TABLE BILL flow: freezing accumulated table bill into the receipt snapshot
+        // pay table bill flow: freezing accumulated table bill into the receipt snapshot
         setCheckoutSession({
             items: [...activeOrders],
             subtotal: activeOrdersSubtotal,
@@ -384,13 +384,13 @@ function CustomerOrderContent() {
     setTimeout(() => {
       setOrderSuccess(method);
 
-      // ONLY wipe the active session if they were paying the entire accumulated table bill
+      // only wipe the active session if they were paying the entire accumulated table bill
       if (checkoutSession?.isTableBill) {
          setActiveOrders([]);
          if (typeof window !== 'undefined') {
-            localStorage.removeItem(`activeOrders_tbl_${selectedTable}`);
-            localStorage.removeItem('customerName');
-            localStorage.removeItem('isNameLocked');
+            sessionStorage.removeItem(`activeOrders_tbl_${selectedTable}`);
+            sessionStorage.removeItem('customerName');
+            sessionStorage.removeItem('isNameLocked');
          }
       }
     }, 3000);
@@ -524,7 +524,7 @@ function CustomerOrderContent() {
                 </div>
               </div>
 
-              {/* safely mapped from the frozen checkoutSession to prevent glitches */}
+              {/* safely mapped from the frozen checkoutsession to prevent glitches */}
               <div className="border-t-[3px] border-b-[3px] border-[#00215e] py-3 space-y-2 text-xs font-bold tracking-wider mb-4 overflow-y-auto max-h-[120px] pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {checkoutSession.items.map((item, idx) => (
                   <div key={idx} className="flex justify-between">
@@ -677,7 +677,7 @@ function CustomerOrderContent() {
                 <div className="flex flex-col space-y-4">
                   {/* unpaid intent for cash pay, so it shows up at cashier for manual fulfillment */}
                   <button onClick={() => handleOrder('UNPAID', 'CASH')} disabled={isOrdering} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">CASH</button>
-                  {/* initially set intent as UNPAID until customer strictly finishes scanning QRIS where completePayment will automatically PATCH this to PAID */}
+                  {/* initially set intent as unpaid until customer strictly finishes scanning qris where completepayment will automatically patch this to paid */}
                   <button onClick={() => handleOrder('UNPAID', 'CASHLESS')} disabled={isOrdering} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">CASHLESS</button>
                 </div>
               </div>
