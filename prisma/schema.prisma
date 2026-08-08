@@ -20,7 +20,7 @@ model Pelanggan {
 
 model Pegawai {
   id             String      @id
-  pin            String      
+  pin            String  
   namaPegawai    String
   jabatan        String      // options: kasir, koki, pelayan, pemilik
 
@@ -46,8 +46,8 @@ model Meja {
 model Menu {
   id             String    @id @default(uuid())
   namaMenu       String
-  kategori       String    // options: FOOD, DRINKS
-  subKategori    String    // options: Daging, Seafood, Coffee, Tea, etc.
+  kategori       String    // options: food, drinks
+  subKategori    String    // options: daging, seafood, coffee, tea, etc.
   harga          Float
   image          String?   // optional image path for the menu item
 
