@@ -14,6 +14,7 @@ interface MenuData {
   subKategori?: string;
   harga: number;
   image?: string | null;
+  komposisiString?: string;
   isAvailable?: boolean;
 }
 
@@ -26,6 +27,14 @@ interface ActiveOrderItem {
   namaMenu: string;
   qty: number;
   subtotal: number;
+}
+
+interface CheckoutSession {
+  items: ActiveOrderItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  isTableBill: boolean;
 }
 
 function CustomerOrderContent() {
@@ -44,7 +53,7 @@ function CustomerOrderContent() {
   const [isNameLocked, setIsNameLocked] = useState(false);
   const [cart, setCart] = useState<{ id: string; qty: number }[]>([]);
 
-  // session state for table orders
+  // session state for table orders (saved robustly in localStorage)
   const [activeOrders, setActiveOrders] = useState<ActiveOrderItem[]>([]);
   const [currentNota, setCurrentNota] = useState<string | null>(null);
 
@@ -58,15 +67,34 @@ function CustomerOrderContent() {
   const [orderSuccess, setOrderSuccess] = useState<'UNPAID' | 'CASH' | 'CASHLESS' | null>(null);
   const [isOrdering, setIsOrdering] = useState(false);
 
-  // load customer session from storage to prevent reset on refresh
+  // checkout snapshot to freeze receipt data so background state changes don't glitch the ui
+  const [checkoutSession, setCheckoutSession] = useState<CheckoutSession | null>(null);
+
+  // load customer session from robust localStorage to prevent reset on tab close or refresh
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const storedName = sessionStorage.getItem('customerName');
-      const storedLock = sessionStorage.getItem('isNameLocked');
+      const storedName = localStorage.getItem('customerName');
+      const storedLock = localStorage.getItem('isNameLocked');
       if (storedName) setCustomerName(storedName);
       if (storedLock === 'true') setIsNameLocked(true);
     }
   }, []);
+
+  // load active orders specifically for the selected table when it changes
+  useEffect(() => {
+    if (selectedTable && typeof window !== 'undefined') {
+      const storedOrders = localStorage.getItem(`activeOrders_tbl_${selectedTable}`);
+      if (storedOrders) {
+        try {
+          setActiveOrders(JSON.parse(storedOrders));
+        } catch (e) {
+          console.error('failed to parse stored orders', e);
+        }
+      } else {
+        setActiveOrders([]); // reset securely if no orders for this table
+      }
+    }
+  }, [selectedTable]);
 
   // fetch tables from database safely
   useEffect(() => {
@@ -107,7 +135,7 @@ function CustomerOrderContent() {
     }
   }, [tableParam]);
 
-  // fetch menu from database safely and bypass cache
+  // fetch menu from database safely and auto-poll for live stock updates
   useEffect(() => {
     async function fetchMenu() {
       try {
@@ -124,6 +152,10 @@ function CustomerOrderContent() {
       }
     }
     fetchMenu();
+
+    // poll menu data every 4 seconds to sync ingredient stock changes live from kitchen
+    const interval = setInterval(fetchMenu, 4000);
+    return () => clearInterval(interval);
   }, []);
 
   // extract dynamic subcategories from fetched menu data
@@ -169,16 +201,21 @@ function CustomerOrderContent() {
   const tax = subtotal * 0.1;
   const totalPrice = subtotal + tax;
 
+  // calculate active session totals if paying active table bill directly
+  const activeOrdersSubtotal = activeOrders.reduce((sum, item) => sum + item.subtotal, 0);
+  const activeOrdersTax = activeOrdersSubtotal * 0.1;
+  const activeOrdersTotalPrice = activeOrdersSubtotal + activeOrdersTax;
+
   // unique random qr code value generator per transaction
-  const qrPaymentData = `restolink-qr-${currentNota || Date.now()}-tbl${selectedTable}-amt${totalPrice}`;
+  const qrPaymentData = `restolink-qr-${currentNota || Date.now()}-tbl${selectedTable}-amt${checkoutSession?.total || 0}`;
 
   // handle starting order from welcome screen and save to session
   const handleStartOrder = () => {
     if (customerName.trim() && selectedTable) {
       setIsNameLocked(true);
       if (typeof window !== 'undefined') {
-        sessionStorage.setItem('customerName', customerName.trim());
-        sessionStorage.setItem('isNameLocked', 'true');
+        localStorage.setItem('customerName', customerName.trim());
+        localStorage.setItem('isNameLocked', 'true');
       }
       setShowWelcome(false);
     }
@@ -189,58 +226,91 @@ function CustomerOrderContent() {
     setIsOrdering(true);
 
     try {
-      const payload = {
-        namaPelanggan: customerName.trim() || 'Guest',
-        idPelanggan: 'Guest',
-        idPegawai: 'KASIR-001',
-        jumlahOrang: 2,
-        noMeja: parseInt(selectedTable, 10) || 1,
-        statusTagihan: statusTagihan, // correctly sends PAID or UNPAID
-        metodePembayaran: paymentMethod, // connects method directly
-        items: cart.map(item => {
-          const m = menus.find(x => x.id === item.id)!;
-          return {
-            idMenu: item.id,
-            jumlahPesanan: item.qty,
-            subtotal: m.harga * item.qty
-          };
-        })
-      };
+      // if ordering new cart items
+      if (cart.length > 0) {
+        const payload = {
+          namaPelanggan: customerName.trim() || 'Guest',
+          idPelanggan: 'Guest',
+          idPegawai: 'KASIR-001',
+          jumlahOrang: 2,
+          noMeja: parseInt(selectedTable, 10) || 1,
+          statusTagihan: statusTagihan,
+          metodePembayaran: paymentMethod,
+          items: cart.map(item => {
+            const m = menus.find(x => x.id === item.id)!;
+            return {
+              idMenu: item.id,
+              jumlahPesanan: item.qty,
+              subtotal: m.harga * item.qty
+            };
+          })
+        };
 
-      const res = await fetch('/api/pesanan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await res.json();
-      const generatedNota = result.noNota || result.id || `NOTA-${Date.now()}`;
-      setCurrentNota(generatedNota);
-
-      if (result.sukses || result.id || result.noNota) {
-        // accumulate items to active table session
-        const newItems: ActiveOrderItem[] = cart.map(item => {
-          const m = menus.find(x => x.id === item.id)!;
-          return {
-            namaMenu: m.namaMenu,
-            qty: item.qty,
-            subtotal: m.harga * item.qty
-          };
+        const res = await fetch('/api/pesanan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
-        setActiveOrders(prev => [...prev, ...newItems]);
 
-        if (statusTagihan === 'UNPAID' && !paymentMethod) { // pure PAY LATER
-           setModalState('NONE');
-           setOrderSuccess('UNPAID');
-           setCart([]);
-        } else if (paymentMethod) { // CASH or CASHLESS chosen
-           setModalState('NONE');
-           setReceiptType(paymentMethod);
-           setCashlessStep('RECEIPT');
-           setIsPaid(false);
+        const result = await res.json();
+        const generatedNota = result.noNota || result.id || `NOTA-${Date.now()}`;
+        setCurrentNota(generatedNota);
+
+        if (result.sukses || result.id || result.noNota) {
+          // PAY LATER flow: add strictly to localStorage session, no receipt needed
+          if (statusTagihan === 'UNPAID' && !paymentMethod) {
+            const newItems: ActiveOrderItem[] = cart.map(item => {
+              const m = menus.find(x => x.id === item.id)!;
+              return { namaMenu: m.namaMenu, qty: item.qty, subtotal: m.harga * item.qty };
+            });
+            
+            setActiveOrders(prev => {
+              const updated = [...prev, ...newItems];
+              if (typeof window !== 'undefined') {
+                 localStorage.setItem(`activeOrders_tbl_${selectedTable}`, JSON.stringify(updated));
+              }
+              return updated;
+            });
+
+            setModalState('NONE');
+            setOrderSuccess('UNPAID');
+            setCart([]);
+          } else if (paymentMethod) { 
+             // PAY NOW flow: freeze the cart items into a checkout session to protect against activeOrders collisions
+             setCheckoutSession({
+               items: cart.map(item => {
+                  const m = menus.find(x => x.id === item.id)!;
+                  return { namaMenu: m.namaMenu, qty: item.qty, subtotal: m.harga * item.qty };
+               }),
+               subtotal: subtotal,
+               tax: tax,
+               total: totalPrice,
+               isTableBill: false // flags that this is just a direct cart payment, not clearing the table
+             });
+
+             setModalState('NONE');
+             setReceiptType(paymentMethod);
+             setCashlessStep('RECEIPT');
+             setIsPaid(false);
+             setCart([]);
+          }
+        } else {
+          alert(result.pesan || 'Failed to process order. Please try again.');
         }
-      } else {
-        alert(result.pesan || 'Failed to process order. Please try again.');
+      } else if (activeOrders.length > 0 && paymentMethod) {
+        // PAY TABLE BILL flow: freezing accumulated table bill into the receipt snapshot
+        setCheckoutSession({
+            items: [...activeOrders],
+            subtotal: activeOrdersSubtotal,
+            tax: activeOrdersTax,
+            total: activeOrdersTotalPrice,
+            isTableBill: true // flags that completing this will wipe the table session
+        });
+
+        setModalState('NONE');
+        setReceiptType(paymentMethod);
+        setCashlessStep('RECEIPT');
+        setIsPaid(false);
       }
     } catch (err) {
       console.error('order submission error:', err);
@@ -256,21 +326,41 @@ function CustomerOrderContent() {
     // extended timeout to 3 seconds for better stamp visibility at 10% opacity
     setTimeout(() => {
       setOrderSuccess(method);
+
+      // ONLY wipe the active session if they were paying the entire accumulated table bill
+      if (checkoutSession?.isTableBill) {
+         setActiveOrders([]);
+         if (typeof window !== 'undefined') {
+            localStorage.removeItem(`activeOrders_tbl_${selectedTable}`);
+            localStorage.removeItem('customerName');
+            localStorage.removeItem('isNameLocked');
+         }
+      }
     }, 3000);
   };
 
+  // properly resets interface protecting the pay later session
   const resetFlow = () => {
     setCart([]);
     setCurrentNota(null);
     setExpandedCategory(null);
     setActiveSubcategory(null);
-    // keep customer name and table locked for same table session
     setModalState('NONE');
     setReceiptType(null);
     setCashlessStep('RECEIPT');
     setIsPaid(false);
     setOrderSuccess(null);
-    setShowWelcome(true);
+
+    // logically route the user based on what they just did
+    if (checkoutSession?.isTableBill || activeOrders.length === 0) {
+       setCustomerName('');
+       setIsNameLocked(false);
+       setShowWelcome(true); // cleanly back to landing page for new customer
+    } else {
+       setShowWelcome(false); // smoothly back to menu since they still have active pay later orders
+    }
+
+    setCheckoutSession(null);
   };
 
   const continueOrderingSession = () => {
@@ -278,7 +368,8 @@ function CustomerOrderContent() {
     setReceiptType(null);
     setCashlessStep('RECEIPT');
     setModalState('NONE');
-    setCart([]); // ready for next order in active session
+    setCart([]);
+    setCheckoutSession(null);
   };
 
   const handleCategoryClick = (category: 'FOOD' | 'DRINKS') => {
@@ -341,7 +432,7 @@ function CustomerOrderContent() {
         </div>
       </div>
     );
-  } else if (receiptType) {
+  } else if (receiptType && checkoutSession) {
     viewContent = (
       <div className="relative w-screen h-screen bg-black font-serif overflow-hidden flex items-center justify-center">
         <div className="absolute inset-0 z-0">
@@ -351,80 +442,80 @@ function CustomerOrderContent() {
 
         {/* yellow centered receipt for cash and step 1 of cashless */}
         {(receiptType === 'CASH' || (receiptType === 'CASHLESS' && cashlessStep === 'RECEIPT')) && (
-          <div className="relative z-10 bg-[#ffc55a] text-[#00215e] w-[450px] p-8 rounded-xl shadow-2xl border-4 border-[#00215e]/10 animate-in fade-in zoom-in duration-300">
+          <div className="relative z-10 bg-[#ffc55a] text-[#00215e] w-[400px] p-6 rounded-xl shadow-2xl border-4 border-[#00215e]/10 animate-in fade-in zoom-in duration-300 flex flex-col">
             {/* subtle huge stamp image overlay when paid */}
             {isPaid && receiptType === 'CASH' && (
               <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none overflow-visible">
-                <Image src="/cap_biru.png" alt="Paid Stamp" width={350} height={350} className="transform -rotate-12 opacity-10 drop-shadow-xl animate-in zoom-in-50 duration-200" />
+                <Image src="/cap_biru.png" alt="Paid Stamp" width={300} height={300} className="transform -rotate-12 opacity-10 drop-shadow-xl animate-in zoom-in-50 duration-200" />
               </div>
             )}
 
-            <div className="flex justify-center mb-6">
-              <Image src="/logo.png" alt="RestoLink Logo" width={80} height={80} className="object-contain drop-shadow-md" />
-            </div>
-
-            <div className="flex justify-between text-sm font-bold mb-4 tracking-wide">
-              <div>
-                <p>Table #{selectedTable}</p>
-                <p>Date : {orderDate}</p>
-                <p>Serve : Cashier</p>
+            <div>
+              <div className="flex justify-center mb-4">
+                <Image src="/logo.png" alt="RestoLink Logo" width={70} height={70} className="object-contain drop-shadow-md" />
               </div>
-              <div className="flex items-end">
-                <p className="text-xl tracking-widest uppercase">{receiptType}</p>
-              </div>
-            </div>
 
-            <div className="border-t-[3px] border-b-[3px] border-[#00215e] py-4 space-y-2 text-xs font-bold tracking-wider mb-4">
-              {cart.map(item => {
-                const m = menus.find(x => x.id === item.id);
-                if (!m) return null;
-                return (
-                  <div key={item.id} className="flex justify-between">
+              <div className="flex justify-between text-sm font-bold mb-4 tracking-wide">
+                <div>
+                  <p>Table #{selectedTable}</p>
+                  <p>Date : {orderDate}</p>
+                  <p>Serve : Cashier</p>
+                </div>
+                <div className="flex items-end">
+                  <p className="text-xl tracking-widest uppercase">{receiptType}</p>
+                </div>
+              </div>
+
+              {/* safely mapped from the frozen checkoutSession to prevent glitches */}
+              <div className="border-t-[3px] border-b-[3px] border-[#00215e] py-3 space-y-2 text-xs font-bold tracking-wider mb-4 overflow-y-auto max-h-[120px] pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {checkoutSession.items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between">
                     <span className="w-8">{item.qty}</span>
-                    <span className="flex-1 uppercase truncate">{m.namaMenu}</span>
-                    <span>Rp. {(m.harga * item.qty).toLocaleString('id-ID')}</span>
+                    <span className="flex-1 uppercase truncate">{item.namaMenu}</span>
+                    <span>Rp. {item.subtotal.toLocaleString('id-ID')}</span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+
+              <div className="w-4/5 ml-auto space-y-1 text-xs font-bold tracking-widest">
+                 <div className="flex justify-between"><span>Subtotal</span><span>Rp. {checkoutSession.subtotal.toLocaleString('id-ID')}</span></div>
+                 <div className="flex justify-between"><span>Tax (10%)</span><span>Rp. {checkoutSession.tax.toLocaleString('id-ID')}</span></div>
+                 <div className="flex justify-between text-lg mt-2 border-t-[3px] border-[#00215e] pt-2">
+                   <span>Total</span>
+                   <span>Rp. {checkoutSession.total.toLocaleString('id-ID')}</span>
+                 </div>
+              </div>
             </div>
 
-            <div className="w-4/5 ml-auto space-y-1 text-xs font-bold tracking-widest">
-               <div className="flex justify-between"><span>Subtotal</span><span>Rp. {subtotal.toLocaleString('id-ID')}</span></div>
-               <div className="flex justify-between"><span>Tax (10%)</span><span>Rp. {tax.toLocaleString('id-ID')}</span></div>
-               <div className="flex justify-between"><span>Tip</span><span>Rp. 0</span></div>
-               <div className="flex justify-between text-lg mt-2 border-t-[3px] border-[#00215e] pt-2">
-                 <span>Total</span>
-                 <span>Rp. {totalPrice.toLocaleString('id-ID')}</span>
-               </div>
-            </div>
+            <div>
+              <div className="mt-5 text-center font-bold">
+                 {receiptType === 'CASH' ? (
+                   <p className="text-xs tracking-wide">Proceed to the cashier to complete payment.</p>
+                 ) : (
+                   <p className="text-xs tracking-wide">Proceed to the next step to complete payment.</p>
+                 )}
+                 <p className="text-[9px] italic mt-2 opacity-80">- Hope you enjoy your dinner -</p>
+              </div>
 
-            <div className="mt-8 text-center font-bold">
-               {receiptType === 'CASH' ? (
-                 <p className="text-sm tracking-wide">Please proceed to the cashier to complete your payment and show your receipt.</p>
-               ) : (
-                 <p className="text-sm tracking-wide">Please proceed to the next step to complete your payment.</p>
-               )}
-               <p className="text-[10px] italic mt-3 opacity-80">-Hope you Enjoy Your Dinner-</p>
+              {receiptType === 'CASH' ? (
+                <button
+                  onClick={() => completePayment('CASH')}
+                  disabled={isPaid}
+                  className="mt-4 w-full bg-[#00215e] text-[#ffc55a] py-3 rounded-lg font-bold tracking-widest hover:opacity-90 transition-opacity relative z-40 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPaid ? 'PROCESSING...' : 'FINISH'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setCashlessStep('QRIS')}
+                  disabled={isPaid}
+                  className="mt-4 w-full bg-[#00215e] text-[#ffc55a] py-3 rounded-lg font-bold tracking-widest hover:opacity-90 transition-opacity relative z-40 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span>PROCEED TO QRIS</span>
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              )}
             </div>
-
-            {receiptType === 'CASH' ? (
-              <button
-                onClick={() => completePayment('CASH')}
-                disabled={isPaid}
-                className="mt-6 w-full bg-[#00215e] text-[#ffc55a] py-3 rounded-lg font-bold tracking-widest hover:opacity-90 transition-opacity relative z-40 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isPaid ? 'PROCESSING...' : 'FINISH'}
-              </button>
-            ) : (
-              <button
-                onClick={() => setCashlessStep('QRIS')}
-                disabled={isPaid}
-                className="mt-6 w-full bg-[#00215e] text-[#ffc55a] py-3 rounded-lg font-bold tracking-widest hover:opacity-90 transition-opacity relative z-40 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span>ORDER NOW</span>
-                <ArrowRight className="w-5 h-5" />
-              </button>
-            )}
           </div>
         )}
 
@@ -433,46 +524,42 @@ function CustomerOrderContent() {
           <div className="relative z-10 flex items-center space-x-10 animate-in fade-in slide-in-from-bottom-8 duration-300">
 
             {/* dark receipt for cashless on the left */}
-            <div className="relative bg-[#111111]/90 text-[#ffc55a] w-[450px] p-8 rounded-2xl shadow-2xl border-2 border-[#ffc55a]/40 backdrop-blur-md">
+            <div className="relative bg-[#111111]/90 text-[#ffc55a] w-[400px] p-6 rounded-2xl shadow-2xl border-2 border-[#ffc55a]/40 backdrop-blur-md flex flex-col">
               {/* subtle huge white stamp image overlay when paid */}
               {isPaid && (
                 <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none overflow-visible">
-                  <Image src="/cap_putih.png" alt="Paid Stamp" width={350} height={350} className="transform -rotate-12 opacity-10 drop-shadow-2xl animate-in zoom-in-50 duration-200" />
+                  <Image src="/cap_putih.png" alt="Paid Stamp" width={300} height={300} className="transform -rotate-12 opacity-10 drop-shadow-2xl animate-in zoom-in-50 duration-200" />
                 </div>
               )}
 
-              <div className="flex justify-between text-lg font-bold mb-6 tracking-wide">
+              <div className="flex justify-between text-base font-bold mb-5 tracking-wide">
                 <div className="space-y-1">
-                  <p className="text-base">Table #{selectedTable}</p>
-                  <p className="text-sm">Date : {orderDate}</p>
-                  <p className="text-sm">Serve : Cashier</p>
+                  <p>Table #{selectedTable}</p>
+                  <p className="text-xs">Date : {orderDate}</p>
+                  <p className="text-xs">Serve : Cashier</p>
                 </div>
                 <div>
-                  <p className="text-xl tracking-widest uppercase">CASHLESS</p>
+                  <p className="text-lg tracking-widest uppercase">CASHLESS</p>
                 </div>
               </div>
 
-              <div className="border-t-2 border-b-2 border-[#ffc55a]/60 py-4 space-y-3 text-xs font-bold tracking-wider mb-6">
-                {cart.map(item => {
-                  const m = menus.find(x => x.id === item.id);
-                  if (!m) return null;
-                  return (
-                    <div key={item.id} className="flex justify-between">
-                      <span className="w-8">{item.qty}</span>
-                      <span className="flex-1 uppercase truncate">{m.namaMenu}</span>
-                      <span>Rp. {(m.harga * item.qty).toLocaleString('id-ID')}</span>
-                    </div>
-                  );
-                })}
+              {/* shorter scrollable middle section for dark receipt */}
+              <div className="border-t-2 border-b-2 border-[#ffc55a]/60 py-3 space-y-3 text-xs font-bold tracking-wider mb-5 overflow-y-auto max-h-[120px] pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {checkoutSession.items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between">
+                    <span className="w-8">{item.qty}</span>
+                    <span className="flex-1 uppercase truncate">{item.namaMenu}</span>
+                    <span>Rp. {item.subtotal.toLocaleString('id-ID')}</span>
+                  </div>
+                ))}
               </div>
 
               <div className="w-3/4 ml-auto space-y-2 text-sm font-bold tracking-widest">
-                 <div className="flex justify-between"><span>Subtotal</span><span>Rp. {subtotal.toLocaleString('id-ID')}</span></div>
-                 <div className="flex justify-between"><span>Tax (10%)</span><span>Rp. {tax.toLocaleString('id-ID')}</span></div>
-                 <div className="flex justify-between"><span>Tip</span><span>Rp. 0</span></div>
-                 <div className="flex justify-between text-xl mt-3 border-t-2 border-[#ffc55a]/60 pt-3">
+                 <div className="flex justify-between"><span>Subtotal</span><span>Rp. {checkoutSession.subtotal.toLocaleString('id-ID')}</span></div>
+                 <div className="flex justify-between"><span>Tax (10%)</span><span>Rp. {checkoutSession.tax.toLocaleString('id-ID')}</span></div>
+                 <div className="flex justify-between text-lg mt-3 border-t-2 border-[#ffc55a]/60 pt-3">
                    <span>Total</span>
-                   <span>Rp. {totalPrice.toLocaleString('id-ID')}</span>
+                   <span>Rp. {checkoutSession.total.toLocaleString('id-ID')}</span>
                  </div>
               </div>
             </div>
@@ -491,7 +578,7 @@ function CustomerOrderContent() {
                    level="H"
                  />
                </div>
-               <p className="text-[#ffc55a]/80 italic mt-6 text-xs tracking-widest">-Hope you Enjoy Your Dinner-</p>
+               <p className="text-[#ffc55a]/80 italic mt-6 text-xs tracking-widest">- Hope you enjoy your dinner -</p>
                <button
                  onClick={() => completePayment('CASHLESS')}
                  disabled={isPaid}
@@ -530,9 +617,9 @@ function CustomerOrderContent() {
                 <button onClick={() => setModalState('NONE')} className="absolute top-4 right-4 bg-[#00215e] text-[#ffc55a] rounded-full p-1 hover:scale-110 transition-transform"><X className="w-5 h-5"/></button>
                 <h2 className="text-2xl font-extrabold text-center mb-6 tracking-wide">How would you like to pay?</h2>
                 <div className="flex flex-col space-y-4">
-                  {/* UNPAID intent for cash pay, so it shows up at cashier for manual fulfillment */}
+                  {/* unpaid intent for cash pay, so it shows up at cashier for manual fulfillment */}
                   <button onClick={() => handleOrder('UNPAID', 'CASH')} disabled={isOrdering} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">CASH</button>
-                  {/* PAID intent for cashless, instantly marks as processed */}
+                  {/* paid intent for cashless, instantly marks as processed */}
                   <button onClick={() => handleOrder('PAID', 'CASHLESS')} disabled={isOrdering} className="bg-[#00215e] text-[#ffc55a] py-3 rounded-xl font-bold text-lg tracking-widest hover:opacity-90 shadow-md transition-opacity">CASHLESS</button>
                 </div>
               </div>
@@ -639,7 +726,7 @@ function CustomerOrderContent() {
                   <Receipt className="w-5 h-5 text-[#ffc55a]" />
                   <div>
                     <p className="text-xs font-bold tracking-wider uppercase">Active Session Order (Table {selectedTable})</p>
-                    <p className="text-[10px] opacity-80">{activeOrders.length} items ordered previously. You can add more items below!</p>
+                    <p className="text-[10px] opacity-80">{activeOrders.length} items ordered previously. You can add more items below or pay your bill at the cashier!</p>
                   </div>
                 </div>
               </div>
@@ -673,16 +760,23 @@ function CustomerOrderContent() {
                              <Image src={menu.image} alt={menu.namaMenu} width={80} height={80} className="object-contain drop-shadow-md" />
                           </div>
                         )}
-                        <div className="flex-1 pr-2">
-                          <h3 className="text-[#ffc55a] text-sm font-bold tracking-widest uppercase mb-1 leading-snug">{menu.namaMenu}</h3>
-                          <p className="text-[#ffc55a]/70 text-xs tracking-widest font-semibold">Rp. {menu.harga.toLocaleString('id-ID')}</p>
+                        <div className="flex-1 pr-2 flex flex-col justify-center">
+                          <h3 className="text-[#ffc55a] text-sm font-bold tracking-widest uppercase leading-snug">{menu.namaMenu}</h3>
+                          <p className="text-[#ffc55a]/70 text-xs tracking-widest font-semibold mt-1">Rp. {menu.harga.toLocaleString('id-ID')}</p>
+                          
+                          {/* display ingredients here directly below menu info instead of cart */}
+                          {menu.komposisiString && (
+                            <p className="text-[9px] text-[#ffc55a]/50 italic mt-1.5 leading-tight">
+                              Contains: {menu.komposisiString}
+                            </p>
+                          )}
                         </div>
                       </div>
 
-                      {/* not available overlay */}
+                      {/* out of stock overlay */}
                       {menu.isAvailable === false && (
                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-                          <span className="text-[#fc4100] font-extrabold tracking-widest text-sm bg-black/80 px-3 py-1 rounded-full border border-[#fc4100]">NOT AVAILABLE</span>
+                          <span className="text-[#fc4100] font-extrabold tracking-widest text-sm bg-black/80 px-3 py-1 rounded-full border border-[#fc4100]">OUT OF STOCK</span>
                         </div>
                       )}
                     </div>
@@ -744,19 +838,46 @@ function CustomerOrderContent() {
             </div>
 
             <div className="p-6 pt-0">
-              <div className="bg-[#ffc55a] text-[#00215e] p-5 rounded-xl flex justify-between items-center shadow-[0_0_30px_rgba(255,197,90,0.2)]">
-                 <div>
-                   <p className="text-[10px] font-bold tracking-widest">{totalItems} items</p>
-                   <p className="text-base font-bold tracking-widest mt-1">Rp. {totalPrice.toLocaleString('id-ID')}</p>
-                 </div>
-                 <button
-                  onClick={() => setModalState('WHEN')}
-                  disabled={cart.length === 0}
-                  className="bg-[#00215e] text-[#ffc55a] px-6 py-2 rounded-lg text-sm font-bold tracking-widest hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg"
-                 >
-                   Order
-                 </button>
-              </div>
+              {cart.length > 0 ? (
+                <div className="bg-[#ffc55a] text-[#00215e] p-5 rounded-xl flex justify-between items-center shadow-[0_0_30px_rgba(255,197,90,0.2)]">
+                   <div>
+                     <p className="text-[10px] font-bold tracking-widest">{totalItems} items</p>
+                     <p className="text-base font-bold tracking-widest mt-1">Rp. {totalPrice.toLocaleString('id-ID')}</p>
+                   </div>
+                   <button
+                    onClick={() => setModalState('WHEN')}
+                    className="bg-[#00215e] text-[#ffc55a] px-6 py-2 rounded-lg text-sm font-bold tracking-widest hover:opacity-90 transition-opacity shadow-lg"
+                   >
+                     ORDER
+                   </button>
+                </div>
+              ) : activeOrders.length > 0 ? (
+                <div className="bg-[#ffc55a] text-[#00215e] p-5 rounded-xl flex justify-between items-center shadow-[0_0_30px_rgba(255,197,90,0.2)]">
+                   <div>
+                     <p className="text-[10px] font-bold tracking-widest">Table Session Bill</p>
+                     <p className="text-base font-bold tracking-widest mt-1">Rp. {activeOrdersTotalPrice.toLocaleString('id-ID')}</p>
+                   </div>
+                   <button
+                    onClick={() => setModalState('METHOD')}
+                    className="bg-[#00215e] text-[#ffc55a] px-5 py-2 rounded-lg text-xs font-bold tracking-widest hover:opacity-90 transition-opacity shadow-lg uppercase"
+                   >
+                     PAY TABLE BILL
+                   </button>
+                </div>
+              ) : (
+                <div className="bg-[#ffc55a]/50 text-[#00215e] p-5 rounded-xl flex justify-between items-center opacity-60">
+                   <div>
+                     <p className="text-[10px] font-bold tracking-widest">0 items</p>
+                     <p className="text-base font-bold tracking-widest mt-1">Rp. 0</p>
+                   </div>
+                   <button
+                    disabled
+                    className="bg-[#00215e] text-[#ffc55a] px-6 py-2 rounded-lg text-sm font-bold tracking-widest opacity-50 cursor-not-allowed"
+                   >
+                     ORDER
+                   </button>
+                </div>
+              )}
             </div>
           </div>
         </main>
@@ -778,7 +899,7 @@ function CustomerOrderContent() {
           <div className="bg-[#ffc55a] text-[#00215e] p-10 rounded-3xl w-[450px] shadow-2xl flex flex-col items-center transform transition-all animate-in zoom-in-95 duration-300">
             <h2 className="text-4xl font-extrabold tracking-widest mb-4 uppercase">SUCCESS</h2>
             <p className="text-center font-bold tracking-wide text-sm opacity-90 mb-8">
-              {orderSuccess === 'UNPAID' && `Order placed for Table ${selectedTable}! You can add more items to your table session anytime.`}
+              {orderSuccess === 'UNPAID' && `Order placed for Table ${selectedTable}! You can add more items or pay later at the cashier anytime.`}
               {orderSuccess === 'CASH' && 'Payment request confirmed! Please proceed to the cashier to complete payment.'}
               {orderSuccess === 'CASHLESS' && 'Payment complete! Your order is now being processed. Enjoy your meal.'}
             </p>
@@ -796,7 +917,7 @@ function CustomerOrderContent() {
                 onClick={resetFlow}
                 className="w-full bg-[#00215e] text-[#ffc55a] py-4 rounded-xl font-bold tracking-widest hover:opacity-90 shadow-lg transition-opacity"
               >
-                BACK TO HOME
+                {checkoutSession?.isTableBill || activeOrders.length === 0 ? 'BACK TO HOME' : 'BACK TO MENU'}
               </button>
             )}
           </div>
