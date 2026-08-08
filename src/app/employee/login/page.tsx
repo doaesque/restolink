@@ -22,23 +22,29 @@ export default function EmployeeLoginPage() {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, pin }),
+        // map username state to idpegawai as expected by the backend api
+        body: JSON.stringify({ idPegawai: username.toUpperCase(), pin }),
       });
 
       const result = await response.json();
 
-      if (result.sukses) {
-        // save employee data to localstorage so it can be read by dashboard
+      if (result.sukses || result.data) {
+        // save employee data to localstorage with various aliases to support all dashboards
         localStorage.setItem('idPegawai', result.data.id);
         localStorage.setItem('namaPegawai', result.data.namaPegawai);
         localStorage.setItem('employeeRole', result.data.jabatan);
+        localStorage.setItem('employeeId', result.data.id);
+        localStorage.setItem('employeeName', result.data.namaPegawai);
+        localStorage.setItem('pegawai_id', result.data.id);
+        localStorage.setItem('pegawai_nama', result.data.namaPegawai);
+        localStorage.setItem('pegawai_role', result.data.jabatan);
 
         const role = result.data.jabatan;
         // auto redirect based on database role
         if (role === 'PELAYAN') router.push('/employee/pelayan');
         else if (role === 'KOKI') router.push('/employee/koki');
         else if (role === 'KASIR') router.push('/employee/kasir');
-        else if (role === 'PEMILIK') router.push('/employee');
+        else if (role === 'PEMILIK') router.push('/employee/owner');
         else router.push('/employee');
       } else {
         setPesanError(result.pesan || 'Failed to login to the system.');

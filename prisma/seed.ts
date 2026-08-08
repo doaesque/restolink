@@ -31,10 +31,10 @@ async function main() {
   const defaultPin = await bcrypt.hash('123456', 10);
   await prisma.pegawai.createMany({
     data: [
-      { id: 'OWNER-001', pin: defaultPin, namaPegawai: 'Salsabila Khoirunnisa (Pemilik RestoLink)', jabatan: 'PEMILIK' },
-      { id: 'KASIR-001', pin: defaultPin, namaPegawai: 'Serena Luthfiana (Kasir Utama)', jabatan: 'KASIR' },
-      { id: 'KOKI-001', pin: defaultPin, namaPegawai: 'Daisy Maria (Head Chef)', jabatan: 'KOKI' },
-      { id: 'PLYN-001', pin: defaultPin, namaPegawai: 'Najwa Nurul (Pelayan Senior)', jabatan: 'PELAYAN' },
+      { id: 'OWNER-001', pin: defaultPin, namaPegawai: 'Salsabila Khoirunnisa', jabatan: 'PEMILIK' },
+      { id: 'KASIR-001', pin: defaultPin, namaPegawai: 'Serena Luthfiana', jabatan: 'KASIR' },
+      { id: 'KOKI-001', pin: defaultPin, namaPegawai: 'Daisy Maria', jabatan: 'KOKI' },
+      { id: 'PLYN-001', pin: defaultPin, namaPegawai: 'Najwa Nurul', jabatan: 'PELAYAN' },
     ],
   });
 
