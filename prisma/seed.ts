@@ -1,3 +1,4 @@
+// database seed file to generate initial robust data
 import prisma from '../src/lib/prisma';
 import bcrypt from 'bcryptjs';
 
@@ -99,7 +100,7 @@ async function main() {
     data: [
       { id: 'BB-01', namaBahan: 'A5 Japanese Wagyu', statusBahan: 'TERSEDIA' },
       { id: 'BB-02', namaBahan: 'Fresh Black Truffle', statusBahan: 'TERSEDIA' },
-      { id: 'BB-03', namaBahan: 'Saffron', statusBahan: 'HABIS' }, // updated name so text matching triggers Out Of Stock for lobster
+      { id: 'BB-03', namaBahan: 'Saffron', statusBahan: 'HABIS' }, // updated name so text matching triggers out of stock for lobster
       { id: 'BB-04', namaBahan: 'Artesian Water', statusBahan: 'TERSEDIA' },
       { id: 'BB-05', namaBahan: 'Alaskan King Crab', statusBahan: 'TERSEDIA' },
       { id: 'BB-06', namaBahan: 'Edible 24K Gold Leaf', statusBahan: 'TERSEDIA' },
@@ -122,7 +123,7 @@ async function main() {
         { idMenu: wagyu.id, idBahan: 'BB-02' },
         { idMenu: lobster.id, idBahan: 'BB-03' },
         { idMenu: water.id, idBahan: 'BB-04' },
-        { idMenu: champagne.id, idBahan: 'BB-07' } // now linked to BB-07
+        { idMenu: champagne.id, idBahan: 'BB-07' } // now linked to bb-07
       ]
     });
   }

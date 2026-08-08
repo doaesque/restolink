@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { X, ChevronDown, ShoppingBag, Receipt, ArrowRight } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -30,6 +30,7 @@ interface ActiveOrderItem {
 
 function CustomerOrderContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   // get table number from url query (e.g. ?table=5), default to 1
   const tableParam = searchParams?.get('table');
 
@@ -40,6 +41,7 @@ function CustomerOrderContent() {
   // order context data
   const [selectedTable, setSelectedTable] = useState<string>('');
   const [customerName, setCustomerName] = useState<string>('');
+  const [isNameLocked, setIsNameLocked] = useState(false);
   const [cart, setCart] = useState<{ id: string; qty: number }[]>([]);
 
   // session state for table orders
@@ -56,22 +58,46 @@ function CustomerOrderContent() {
   const [orderSuccess, setOrderSuccess] = useState<'UNPAID' | 'CASH' | 'CASHLESS' | null>(null);
   const [isOrdering, setIsOrdering] = useState(false);
 
+  // load customer session from storage to prevent reset on refresh
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedName = sessionStorage.getItem('customerName');
+      const storedLock = sessionStorage.getItem('isNameLocked');
+      if (storedName) setCustomerName(storedName);
+      if (storedLock === 'true') setIsNameLocked(true);
+    }
+  }, []);
+
   // fetch tables from database safely
   useEffect(() => {
     async function fetchTables() {
       try {
         const res = await fetch(`/api/meja?t=${new Date().getTime()}`, { cache: 'no-store' });
         const data = await res.json();
+        let fetchedTables: TableData[] = [];
+
         if (Array.isArray(data)) {
-          setTables(data);
+          fetchedTables = data;
         } else if (data && data.data) {
-          setTables(data.data);
+          fetchedTables = data.data;
+        }
+
+        setTables(fetchedTables);
+
+        // auto redirect to random available table if visiting root
+        if (!tableParam) {
+          const available = fetchedTables.filter((t) => t.status === 'TERSEDIA');
+          if (available.length > 0) {
+            const randomTable = available[Math.floor(Math.random() * available.length)];
+            router.replace(`/?table=${randomTable.noMeja}`);
+          }
         }
       } catch (err) {
         console.error('failed to fetch tables:', err);
       }
     }
     fetchTables();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // initialize selected table from url if exists
@@ -145,6 +171,18 @@ function CustomerOrderContent() {
 
   // unique random qr code value generator per transaction
   const qrPaymentData = `restolink-qr-${currentNota || Date.now()}-tbl${selectedTable}-amt${totalPrice}`;
+
+  // handle starting order from welcome screen and save to session
+  const handleStartOrder = () => {
+    if (customerName.trim() && selectedTable) {
+      setIsNameLocked(true);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('customerName', customerName.trim());
+        sessionStorage.setItem('isNameLocked', 'true');
+      }
+      setShowWelcome(false);
+    }
+  };
 
   // order checkout process saving to database
   const handleOrder = async (statusTagihan: 'PAID' | 'UNPAID', paymentMethod?: 'CASH' | 'CASHLESS') => {
@@ -223,12 +261,10 @@ function CustomerOrderContent() {
 
   const resetFlow = () => {
     setCart([]);
-    setActiveOrders([]);
     setCurrentNota(null);
     setExpandedCategory(null);
     setActiveSubcategory(null);
-    setCustomerName(''); // clear customer name for new guests
-    setSelectedTable(''); // clear table
+    // keep customer name and table locked for same table session
     setModalState('NONE');
     setReceiptType(null);
     setCashlessStep('RECEIPT');
@@ -288,25 +324,14 @@ function CustomerOrderContent() {
               placeholder="ENTER YOUR NAME"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              className="w-full bg-[#00215e] text-[#ffc55a] border-2 border-[#ffc55a] p-4 rounded-xl font-bold tracking-widest text-center placeholder-[#ffc55a]/50 focus:outline-none transition-all text-sm uppercase"
+              disabled={isNameLocked}
+              className={`w-full bg-[#00215e] text-[#ffc55a] border-2 border-[#ffc55a] p-4 rounded-xl font-bold tracking-widest text-center placeholder-[#ffc55a]/50 focus:outline-none transition-all text-sm uppercase ${
+                isNameLocked ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
             />
 
-            <div className="relative w-full group">
-              <select
-                value={selectedTable}
-                onChange={(e) => setSelectedTable(e.target.value)}
-                className="w-full bg-[#00215e] text-[#ffc55a] border-2 border-[#ffc55a] p-4 rounded-xl font-bold tracking-widest text-center appearance-none focus:outline-none transition-all cursor-pointer text-sm"
-              >
-                <option value="" disabled>SELECT TABLE</option>
-                {tables.map(t => (
-                  <option key={t.noMeja} value={t.noMeja} className="bg-[#00215e] text-[#ffc55a]">Table {t.noMeja}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-[#ffc55a] pointer-events-none w-5 h-5" />
-            </div>
-
             <button
-              onClick={() => setShowWelcome(false)}
+              onClick={handleStartOrder}
               disabled={!selectedTable || !customerName.trim()}
               className="w-full bg-[#00215e] border-2 border-[#ffc55a] text-[#ffc55a] px-8 py-4 rounded-xl text-3xl font-bold tracking-widest hover:bg-[#ffc55a] hover:text-[#00215e] transition-all shadow-2xl uppercase disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -383,11 +408,19 @@ function CustomerOrderContent() {
             </div>
 
             {receiptType === 'CASH' ? (
-              <button onClick={() => completePayment('CASH')} className="mt-6 w-full bg-[#00215e] text-[#ffc55a] py-3 rounded-lg font-bold tracking-widest hover:opacity-90 transition-opacity relative z-40">
-                FINISH
+              <button
+                onClick={() => completePayment('CASH')}
+                disabled={isPaid}
+                className="mt-6 w-full bg-[#00215e] text-[#ffc55a] py-3 rounded-lg font-bold tracking-widest hover:opacity-90 transition-opacity relative z-40 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isPaid ? 'PROCESSING...' : 'FINISH'}
               </button>
             ) : (
-              <button onClick={() => setCashlessStep('QRIS')} className="mt-6 w-full bg-[#00215e] text-[#ffc55a] py-3 rounded-lg font-bold tracking-widest hover:opacity-90 transition-opacity relative z-40 flex items-center justify-center space-x-2">
+              <button
+                onClick={() => setCashlessStep('QRIS')}
+                disabled={isPaid}
+                className="mt-6 w-full bg-[#00215e] text-[#ffc55a] py-3 rounded-lg font-bold tracking-widest hover:opacity-90 transition-opacity relative z-40 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <span>ORDER NOW</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
@@ -461,9 +494,10 @@ function CustomerOrderContent() {
                <p className="text-[#ffc55a]/80 italic mt-6 text-xs tracking-widest">-Hope you Enjoy Your Dinner-</p>
                <button
                  onClick={() => completePayment('CASHLESS')}
-                 className="mt-6 bg-[#ffc55a] text-[#00215e] px-12 py-3 rounded-xl font-bold tracking-widest hover:opacity-90 transition-opacity shadow-lg relative z-40"
+                 disabled={isPaid}
+                 className="mt-6 bg-[#ffc55a] text-[#00215e] px-12 py-3 rounded-xl font-bold tracking-widest hover:opacity-90 transition-opacity shadow-lg relative z-40 disabled:opacity-50 disabled:cursor-not-allowed"
                >
-                 DONE
+                 {isPaid ? 'PROCESSING...' : 'DONE'}
                </button>
             </div>
           </div>
@@ -645,10 +679,10 @@ function CustomerOrderContent() {
                         </div>
                       </div>
 
-                      {/* out of stock overlay */}
+                      {/* not available overlay */}
                       {menu.isAvailable === false && (
                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-                          <span className="text-[#fc4100] font-extrabold tracking-widest text-sm bg-black/80 px-3 py-1 rounded-full border border-[#fc4100]">OUT OF STOCK</span>
+                          <span className="text-[#fc4100] font-extrabold tracking-widest text-sm bg-black/80 px-3 py-1 rounded-full border border-[#fc4100]">NOT AVAILABLE</span>
                         </div>
                       )}
                     </div>
