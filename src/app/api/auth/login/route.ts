@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   } catch (error) {
     // log the error to the server console so it can be debugged in vercel logs
     console.error('Login API Error:', error);
-    
+
     return NextResponse.json(
       { sukses: false, pesan: 'A server error occurred during authentication.' },
       { status: 500 }

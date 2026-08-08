@@ -14,7 +14,7 @@ export async function GET() {
     return NextResponse.json({ sukses: true, data: pegawai });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'failed to fetch staff data.' },
+      { sukses: false, pesan: 'Failed to fetch staff data.' },
       { status: 500 }
     );
   }

@@ -1,3 +1,4 @@
+// api route for handling active orders
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 
@@ -19,7 +20,10 @@ export async function GET() {
     });
     return NextResponse.json({ sukses: true, data: pesanan });
   } catch (error) {
-    return NextResponse.json({ sukses: false, pesan: 'gagal mengambil data pesanan' }, { status: 500 });
+    return NextResponse.json(
+      { sukses: false, pesan: 'Failed to fetch order data.' },
+      { status: 500 }
+    );
   }
 }
 
@@ -28,23 +32,23 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { namaPelanggan, idPegawai, jumlahOrang, noMeja, items, statusTagihan, metodePembayaran } = body;
 
-    // 1. catat atau buat data pelanggan baru
+    // 1. record or create new customer data
     const pelanggan = await prisma.pelanggan.create({
       data: {
         namaPelanggan: namaPelanggan || 'Guest',
       }
     });
 
-    // hitung total harga dan pajak
+    // calculate total price and tax
     const totalSubtotal = items.reduce((sum: number, item: any) => sum + item.subtotal, 0);
     const tax = totalSubtotal * 0.1;
     const totalPajak = totalSubtotal + tax;
 
-    // 2. buat pesanan baru
+    // 2. create new order record
     const newPesanan = await prisma.pesanan.create({
       data: {
         jumlahOrang: jumlahOrang || 1,
-        // jika langsung paid (cashless), status dapur langsung diproses
+        // if immediately paid (cashless), kitchen status goes to processing directly
         statusPesanan: statusTagihan === 'PAID' ? 'DIPROSES' : 'MENUNGGU',
         statusTagihan: statusTagihan || 'UNPAID',
         idPelanggan: pelanggan.id,
@@ -60,7 +64,7 @@ export async function POST(req: Request) {
       }
     });
 
-    // 3. jika metode bayar langsung cashless (PAID), buat record pembayaran
+    // 3. if payment method is direct cashless (paid), generate payment record
     if (statusTagihan === 'PAID' && metodePembayaran) {
       await prisma.pembayaran.create({
         data: {
@@ -75,7 +79,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ sukses: true, noNota: newPesanan.noNota });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ sukses: false, pesan: 'gagal membuat pesanan baru' }, { status: 500 });
+    return NextResponse.json(
+      { sukses: false, pesan: 'Failed to create new order.' },
+      { status: 500 }
+    );
   }
 }
 
@@ -88,14 +95,14 @@ export async function PUT(req: Request) {
     if (statusPesanan) updateData.statusPesanan = statusPesanan;
     if (statusTagihan) updateData.statusTagihan = statusTagihan;
 
-    // update pesanan (contohnya update dari kasir atau koki)
+    // update order status (e.g., from cashier or kitchen dashboard)
     const pesanan = await prisma.pesanan.update({
       where: { noNota },
       data: updateData,
       include: { detailPesanan: true }
     });
 
-    // jika di kasir status diubah jadi PAID (bayar tunai/qris di tempat), catat ke db pembayaran
+    // if status changed to paid at cashier, record it into payment db
     if (statusTagihan === 'PAID' && metodePembayaran) {
       const existingPayment = await prisma.pembayaran.findUnique({ where: { noNota } });
       if (!existingPayment) {
@@ -115,7 +122,10 @@ export async function PUT(req: Request) {
     return NextResponse.json({ sukses: true, data: pesanan });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ sukses: false, pesan: 'gagal mengupdate pesanan' }, { status: 500 });
+    return NextResponse.json(
+      { sukses: false, pesan: 'Failed to update order.' },
+      { status: 500 }
+    );
   }
 }
 
@@ -125,7 +135,10 @@ export async function PATCH(request: Request) {
     const { noNota, statusTagihan } = body;
 
     if (!noNota || !statusTagihan) {
-      return NextResponse.json({ sukses: false, pesan: 'incomplete data payload' }, { status: 400 });
+      return NextResponse.json(
+        { sukses: false, pesan: 'Incomplete data payload.' },
+        { status: 400 }
+      );
     }
 
     const updatedOrder = await prisma.pesanan.update({
@@ -136,6 +149,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ sukses: true, data: updatedOrder });
   } catch (error: any) {
     console.error('api pesanan update error:', error);
-    return NextResponse.json({ sukses: false, pesan: error.message }, { status: 500 });
+    return NextResponse.json(
+      { sukses: false, pesan: error.message },
+      { status: 500 }
+    );
   }
 }

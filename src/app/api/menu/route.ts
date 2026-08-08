@@ -1,6 +1,6 @@
-// src/app/api/menu/route.ts
+// api route for fetching menu catalog
 import { NextResponse } from 'next/server';
-import prisma from '../../../lib/prisma'; 
+import prisma from '../../../lib/prisma';
 
 // force next.js to bypass cache and dynamically fetch the latest db data
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,7 @@ export async function GET() {
     return NextResponse.json({ sukses: true, data: menus });
   } catch (error) {
     return NextResponse.json(
-      { sukses: false, pesan: 'gagal mengambil data menu' }, 
+      { sukses: false, pesan: 'Failed to fetch menu data.' },
       { status: 500 }
     );
   }
