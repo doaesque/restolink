@@ -40,12 +40,12 @@ export default function KasirPage() {
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'QRIS'>('CASH');
   const [moneyReceived, setMoneyReceived] = useState<string>('');
   const [tip, setTip] = useState<string>('');
-  
+
   // order filter state
   const [orderFilter, setOrderFilter] = useState<'ALL' | 'UNPAID' | 'PAID'>('ALL');
-  
+
   // dynamic cashier details state (strict no mockup)
-  const [cashierId, setCashierId] = useState<string>(''); 
+  const [cashierId, setCashierId] = useState<string>('');
   const [cashierName, setCashierName] = useState<string>('');
 
   // animation state for stamp
@@ -66,7 +66,7 @@ export default function KasirPage() {
     if (typeof window !== 'undefined') {
       const storedId = localStorage.getItem('pegawai_id') || localStorage.getItem('idPegawai') || '';
       const storedName = localStorage.getItem('pegawai_nama') || localStorage.getItem('namaPegawai') || 'Unknown Cashier';
-      
+
       setCashierId(storedId);
       setCashierName(storedName);
     }
@@ -77,13 +77,13 @@ export default function KasirPage() {
     let interval: NodeJS.Timeout;
     if (view === 'dashboard') {
       fetchOrders(true); // initial fetch with loading state
-      
+
       // refresh active orders every 5 seconds seamlessly
       interval = setInterval(() => {
         fetchOrders(false);
       }, 5000);
     }
-    
+
     return () => clearInterval(interval);
   }, [view]);
 
@@ -92,7 +92,7 @@ export default function KasirPage() {
     setMoneyReceived('');
     setTip('0');
     setPaymentMethod('CASH');
-    
+
     if (selectedOrder?.statusTagihan === 'PAID') {
       // delay slightly for animation effect on load
       const timer = setTimeout(() => setShowStamp(true), 100);
@@ -131,7 +131,7 @@ export default function KasirPage() {
     }
 
     if (pesanan.statusTagihan === 'PAID' || pesanan.statusTagihan === 'DONE') return;
-    
+
     const subtotal = pesanan.detailPesanan.reduce((acc, item) => acc + item.subtotal, 0);
     const totalBayar = subtotal + (subtotal * 0.1);
 
@@ -154,7 +154,7 @@ export default function KasirPage() {
             noNota: pesanan.noNota,
             totalBayar,
             metodePembayaran: paymentMethod === 'CASH' ? 'TUNAI' : 'QRIS',
-            idPegawai: cashierId 
+            idPegawai: cashierId
           }),
         });
 
@@ -169,7 +169,7 @@ export default function KasirPage() {
           // trigger local update to show paid animation instantly
           setSelectedOrder((prev) => (prev ? { ...prev, statusTagihan: 'PAID' } : null));
           showModal('success', 'payment processed successfully!');
-          fetchOrders(false); 
+          fetchOrders(false);
         } else {
           const errorMsg = responseData?.pesan || responseData?.error || responseData?.message || `server error (${res.status}). verify the database relations.`;
           showModal('alert', errorMsg);
@@ -186,11 +186,11 @@ export default function KasirPage() {
       closeModal();
       try {
         const res = await fetch('/api/pesanan', {
-          method: 'PATCH', 
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ noNota: pesanan.noNota, statusTagihan: 'DONE' })
         });
-        
+
         if (res.ok) {
           setSelectedOrder(null);
           fetchOrders(false);
@@ -213,7 +213,7 @@ export default function KasirPage() {
         [noNota]: { count: currentCount + 1, lastPrinted: now }
       };
     });
-    
+
     setTimeout(() => {
       window.print();
     }, 100);
@@ -229,11 +229,11 @@ export default function KasirPage() {
     }
     router.push('/employee/login');
   }
-  
+
   // apply filter to orders and completely remove DONE status from active list
   const filteredOrders = listPesanan.filter((pesanan) => {
-    if (pesanan.statusTagihan === 'DONE') return false; 
-    
+    if (pesanan.statusTagihan === 'DONE') return false;
+
     if (orderFilter === 'ALL') return true;
     if (orderFilter === 'PAID') return pesanan.statusTagihan === 'PAID';
     if (orderFilter === 'UNPAID') return pesanan.statusTagihan !== 'PAID';
@@ -252,12 +252,12 @@ export default function KasirPage() {
             {modal.type === 'success' && <CheckCircle2 className="w-16 h-16 text-green-400 mb-4" />}
             {modal.type === 'alert' && <AlertCircle className="w-16 h-16 text-[#fc4100] mb-4" />}
             {modal.type === 'confirm' && <AlertCircle className="w-16 h-16 text-[#ffc55a] mb-4" />}
-            
+
             <h3 className="text-white text-xl font-bold mb-2">
               {modal.type === 'success' ? 'Success' : modal.type === 'confirm' ? 'Confirmation' : 'Attention'}
             </h3>
             <p className="text-gray-200 mb-8">{modal.message}</p>
-            
+
             <div className="flex space-x-3 w-full">
               {modal.type === 'confirm' ? (
                 <>
@@ -329,7 +329,7 @@ export default function KasirPage() {
     const subtotal = selectedOrder.detailPesanan.reduce((acc, item) => acc + item.subtotal, 0);
     const tax = subtotal * 0.1;
     const total = subtotal + tax;
-    
+
     const safeMoney = parseFloat(moneyReceived) || 0;
     const safeTip = parseFloat(tip) || 0;
     const change = Math.max(0, safeMoney - total - safeTip);
@@ -341,24 +341,24 @@ export default function KasirPage() {
     return (
       <div className="w-screen h-screen flex bg-[#00215e] font-sans overflow-hidden print:bg-white print:h-auto print:overflow-visible">
         {renderModal()}
-        
+
         <div className="w-[280px] bg-[#00215e] flex flex-col items-center py-10 shrink-0 border-r border-[#2c4e80] print:hidden">
           <Image src="/logo_emas.png" alt="Logo" width={100} height={100} />
           <h2 className="text-white font-extrabold text-4xl mt-6 mb-3 tracking-wider">Cashier</h2>
-          
+
           {/* cashier profile badge in sidebar */}
           <div className="mb-8 flex items-center bg-[#2c4e80]/60 border border-[#ffc55a]/20 px-3 py-1.5 rounded-lg text-xs text-white">
             <User className="w-3.5 h-3.5 text-[#ffc55a] mr-1.5 shrink-0" />
             <span className="font-semibold truncate">{cashierName}</span>
           </div>
 
-          <button 
-            onClick={() => { setView('dashboard'); setSelectedOrder(null); }} 
+          <button
+            onClick={() => { setView('dashboard'); setSelectedOrder(null); }}
             className="w-3/4 py-4 rounded-xl font-extrabold text-xl mb-6 shadow-lg bg-[#ffc55a] text-[#00215e] flex items-center justify-center transition-transform hover:scale-105"
           >
             <LayoutDashboard className="w-6 h-6 mr-3" /> Dashboard
           </button>
-          
+
           <div className="mt-auto w-full flex flex-col items-center space-y-4">
              <button onClick={() => { setView('welcome'); setSelectedOrder(null); }} className="text-white font-bold text-xl flex items-center hover:text-[#ffc55a] transition-colors">
                <Home className="w-6 h-6 mr-3" /> Home
@@ -387,7 +387,7 @@ export default function KasirPage() {
                   <div className="flex justify-center mb-4">
                     <Image src="/logo.png" alt="logo" width={60} height={60} className="object-contain" />
                   </div>
-                  
+
                   <div className="flex justify-between text-sm font-bold mb-3">
                     <div>
                       <p>Table #{selectedOrder.noMeja}</p>
@@ -437,7 +437,7 @@ export default function KasirPage() {
 
                   {/* print receipt button, hidden on actual print via css */}
                   {isPaid && (
-                    <button 
+                    <button
                       onClick={() => handlePrintReceipt(selectedOrder.noNota)}
                       className="mt-6 mx-auto w-3/4 py-3 rounded-xl font-bold text-white bg-[#00215e] hover:bg-[#1a3863] transition-colors flex items-center justify-center print:hidden shadow-lg z-20 relative"
                     >
@@ -452,14 +452,14 @@ export default function KasirPage() {
                 <div className="mb-4 shrink-0">
                   <label className="text-[#00215e] font-extrabold text-base mb-2 block uppercase tracking-wider">Payment Method</label>
                   <div className="flex space-x-3">
-                    <button 
+                    <button
                       onClick={() => setPaymentMethod('CASH')}
                       disabled={isPaid}
                       className={`flex-1 py-3 rounded-xl flex items-center justify-center font-bold text-base border-2 transition-all ${paymentMethod === 'CASH' ? 'border-[#00215e] bg-[#00215e] text-white' : 'border-[#2c4e80]/30 text-[#2c4e80] hover:border-[#00215e]'}`}
                     >
                       <Banknote className="w-5 h-5 mr-2" /> Cash
                     </button>
-                    <button 
+                    <button
                       onClick={() => setPaymentMethod('QRIS')}
                       disabled={isPaid}
                       className={`flex-1 py-3 rounded-xl flex items-center justify-center font-bold text-base border-2 transition-all ${paymentMethod === 'QRIS' ? 'border-[#00215e] bg-[#00215e] text-white' : 'border-[#2c4e80]/30 text-[#2c4e80] hover:border-[#00215e]'}`}
@@ -474,24 +474,24 @@ export default function KasirPage() {
                      <>
                         <div className="flex flex-col">
                           <label className="text-[#2c4e80] font-bold text-xs mb-1 uppercase tracking-wide">Money Received</label>
-                          <input 
-                             type="number" 
+                          <input
+                             type="number"
                              value={moneyReceived}
                              onChange={(e) => setMoneyReceived(e.target.value)}
                              disabled={isPaid}
                              placeholder="0"
-                             className="bg-gray-100 text-[#00215e] text-2xl p-3 font-extrabold rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc4100] transition-all w-full" 
+                             className="bg-gray-100 text-[#00215e] text-2xl p-3 font-extrabold rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc4100] transition-all w-full"
                           />
                         </div>
                         <div className="flex flex-col">
                           <label className="text-[#2c4e80] font-bold text-xs mb-1 uppercase tracking-wide">Tip Amount</label>
-                          <input 
-                             type="number" 
+                          <input
+                             type="number"
                              value={tip}
                              onChange={(e) => setTip(e.target.value)}
                              disabled={isPaid}
                              placeholder="0"
-                             className="bg-gray-100 text-[#00215e] text-2xl p-3 font-extrabold rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc4100] transition-all w-full" 
+                             className="bg-gray-100 text-[#00215e] text-2xl p-3 font-extrabold rounded-xl focus:outline-none focus:ring-2 focus:ring-[#fc4100] transition-all w-full"
                           />
                         </div>
                         <div className="flex flex-col mt-2 pt-3 border-t border-gray-200">
@@ -513,14 +513,14 @@ export default function KasirPage() {
 
                 <div className="mt-4 shrink-0 flex flex-col space-y-2">
                    {!isPaid ? (
-                     <button 
+                     <button
                         onClick={() => handleConfirmPayment(selectedOrder)}
                         className="w-full font-extrabold text-lg uppercase tracking-widest text-center py-4 rounded-xl shadow-lg transition-all bg-[#fc4100] text-white hover:opacity-90 hover:scale-[1.02]"
                      >
                         Process Payment
                      </button>
                    ) : (
-                     <button 
+                     <button
                         onClick={() => handleMarkAsDone(selectedOrder)}
                         className="w-full font-extrabold text-lg uppercase tracking-widest text-center py-4 rounded-xl shadow-lg transition-all bg-[#588157] text-white hover:opacity-90 hover:scale-[1.02] flex items-center justify-center"
                      >
@@ -543,7 +543,7 @@ export default function KasirPage() {
       <div className="w-[280px] bg-[#00215e] flex flex-col items-center py-10 shrink-0 border-r border-[#2c4e80]">
         <Image src="/logo_emas.png" alt="Logo" width={100} height={100} />
         <h2 className="text-white font-extrabold text-4xl mt-6 mb-3 tracking-wider">Cashier</h2>
-        
+
         {/* cashier profile badge in sidebar */}
         <div className="mb-8 flex items-center bg-[#2c4e80]/60 border border-[#ffc55a]/20 px-3 py-1.5 rounded-lg text-xs text-white">
           <User className="w-3.5 h-3.5 text-[#ffc55a] mr-1.5 shrink-0" />
@@ -553,7 +553,7 @@ export default function KasirPage() {
         <div className="w-3/4 py-4 rounded-xl font-extrabold text-xl mb-6 shadow-lg bg-[#ffc55a] text-[#00215e] flex items-center justify-center">
           <LayoutDashboard className="w-6 h-6 mr-3" /> Dashboard
         </div>
-        
+
         <div className="mt-auto w-full flex flex-col items-center space-y-4">
            <button onClick={() => setView('welcome')} className="text-white font-bold text-xl flex items-center hover:text-[#ffc55a] transition-colors">
              <Home className="w-6 h-6 mr-3" /> Home
@@ -564,22 +564,22 @@ export default function KasirPage() {
       <div className="flex-1 bg-[#2c4e80] p-10 rounded-tl-[40px] shadow-[inset_10px_10px_20px_rgba(0,0,0,0.4)] flex flex-col">
         <div className="flex justify-between items-center mb-8 shrink-0">
           <h3 className="text-white text-3xl font-extrabold tracking-wide">Active Orders Overview</h3>
-          
+
           {/* status filter buttons */}
           <div className="flex space-x-2 bg-[#00215e] p-1.5 rounded-xl shadow-md border border-[#ffc55a]/20">
-            <button 
+            <button
               onClick={() => setOrderFilter('ALL')}
               className={`px-5 py-2 rounded-lg font-bold text-sm transition-all flex items-center ${orderFilter === 'ALL' ? 'bg-[#ffc55a] text-[#00215e] shadow-sm' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}
             >
               <Filter className="w-4 h-4 mr-2" /> Show All
             </button>
-            <button 
+            <button
               onClick={() => setOrderFilter('UNPAID')}
               className={`px-5 py-2 rounded-lg font-bold text-sm transition-all ${orderFilter === 'UNPAID' ? 'bg-[#fc4100] text-white shadow-sm' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}
             >
               Unpaid
             </button>
-            <button 
+            <button
               onClick={() => setOrderFilter('PAID')}
               className={`px-5 py-2 rounded-lg font-bold text-sm transition-all ${orderFilter === 'PAID' ? 'bg-[#588157] text-white shadow-sm' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}
             >
@@ -587,7 +587,7 @@ export default function KasirPage() {
             </button>
           </div>
         </div>
-        
+
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex space-x-4 mb-4 pr-2">
             <div className="bg-[#00215e] w-32 text-white font-extrabold text-lg text-center py-4 rounded-xl shadow-md shrink-0 uppercase tracking-wide">
@@ -613,11 +613,11 @@ export default function KasirPage() {
               filteredOrders.map((pesanan) => {
                 const isPaid = pesanan.statusTagihan === 'PAID';
                 const subtotal = pesanan.detailPesanan.reduce((acc, item) => acc + item.subtotal, 0);
-                const total = subtotal + (subtotal * 0.1); 
-                
+                const total = subtotal + (subtotal * 0.1);
+
                 return (
-                  <div 
-                    key={pesanan.noNota} 
+                  <div
+                    key={pesanan.noNota}
                     onClick={() => setSelectedOrder(pesanan)}
                     className="flex space-x-4 items-stretch cursor-pointer hover:translate-x-2 transition-transform duration-300"
                   >
