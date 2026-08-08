@@ -4,12 +4,29 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { ConciergeBell, Package, Home, Check, X, LogOut, User, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ConciergeBell, Package, Home, Check, X, LogOut, User, AlertCircle, CheckCircle2, Minus } from 'lucide-react';
+
+interface BahanBaku {
+  id: string;
+  namaBahan: string;
+  statusBahan: string;
+}
+
+interface Komposisi {
+  id: string;
+  idMenu: string;
+  idBahan: string;
+  bahanBaku: BahanBaku;
+}
 
 interface DetailPesanan {
   idDetail: string;
   jumlahPesanan: number;
-  menu: { namaMenu: string };
+  menu: {
+    id: string;
+    namaMenu: string;
+    komposisi?: Komposisi[];
+  };
 }
 
 interface Pesanan {
@@ -17,12 +34,6 @@ interface Pesanan {
   noMeja: number;
   statusPesanan: string;
   detailPesanan: DetailPesanan[];
-}
-
-interface BahanBaku {
-  id: string;
-  namaBahan: string;
-  statusBahan: string;
 }
 
 // custom modal interface matching cashier
@@ -53,15 +64,22 @@ export default function KokiPage() {
   });
 
   useEffect(() => {
-    // retrieve strictly logged in chef info from localstorage
+    // retrieve strictly logged in chef info from localstorage and enforce role security
     if (typeof window !== 'undefined') {
+      const storedRole = localStorage.getItem('employeeRole') || localStorage.getItem('pegawai_role') || '';
+
+      if (storedRole !== 'KOKI' && storedRole !== 'PEMILIK') {
+        router.push('/employee/login');
+        return;
+      }
+
       const storedId = localStorage.getItem('idPegawai') || localStorage.getItem('pegawai_id') || '';
       const storedName = localStorage.getItem('namaPegawai') || localStorage.getItem('pegawai_nama') || 'Unknown Chef';
 
       setChefId(storedId);
       setChefName(storedName);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     // auto-polling feature setup
@@ -106,13 +124,33 @@ export default function KokiPage() {
     }
   }
 
+  // helper to check if a specific item is out of stock based on dynamic composition and raw materials
+  const isItemOutOfStock = (item: DetailPesanan) => {
+    // 1. check directly via menu composition relation if present
+    if (item.menu.komposisi && item.menu.komposisi.length > 0) {
+      return item.menu.komposisi.some((k) => {
+        const currentBahan = listBahan.find(
+          (b) => b.id === k.bahanBaku?.id || b.id === k.idBahan
+        );
+        if (currentBahan) {
+          return currentBahan.statusBahan === 'HABIS';
+        }
+        return k.bahanBaku?.statusBahan === 'HABIS';
+      });
+    }
+
+    // 2. fallback substring keyword matching against raw materials for unlinked items
+    const outOfStockItems = listBahan.filter((b) => b.statusBahan === 'HABIS');
+    return outOfStockItems.some((bahan) => {
+      const bahanWords = bahan.namaBahan.toLowerCase().split(' ');
+      const menuName = item.menu.namaMenu.toLowerCase();
+      return bahanWords.some((word) => word.length > 2 && menuName.includes(word));
+    });
+  };
+
   // helper to check if an order contains an item with missing ingredients
   const checkOrderAvailability = (pesanan: Pesanan) => {
-    const outOfStock = listBahan.filter(b => b.statusBahan === 'HABIS').map(b => b.namaBahan.toLowerCase());
-    const hasMissingIngredient = pesanan.detailPesanan.some(item =>
-      outOfStock.some(bahan => item.menu.namaMenu.toLowerCase().includes(bahan))
-    );
-    return hasMissingIngredient;
+    return pesanan.detailPesanan.some((item) => isItemOutOfStock(item));
   };
 
   // helper to show custom modal
@@ -202,6 +240,7 @@ export default function KokiPage() {
       localStorage.removeItem('pegawai_nama');
       localStorage.removeItem('idPegawai');
       localStorage.removeItem('namaPegawai');
+      localStorage.removeItem('employeeRole');
     }
     router.push('/employee/login');
   }
@@ -357,20 +396,22 @@ export default function KokiPage() {
                 ) : (
                   listPesanan.map(pesanan => {
                     const isReady = isOrderFullyReady(pesanan);
-                    const hasMissingIngredient = checkOrderAvailability(pesanan);
+                    const hasMissingIngredient = checkOrderAvailability(pesanan) && !isReady;
 
                     return (
                       <div key={pesanan.noNota} className="flex space-x-4">
                          <div className="bg-[#00215e] w-36 flex flex-col items-center justify-center rounded-xl text-[#ffc55a] shrink-0 shadow-md">
                             <span className="font-extrabold text-5xl">{pesanan.noMeja}</span>
                             {hasMissingIngredient && (
-                              <span className="mt-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full uppercase tracking-widest font-bold">Needs Cancel</span>
+                              <span className="mt-2 text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full uppercase tracking-widest font-bold text-center leading-tight">Needs Cancel<br/>(Out of Stock)</span>
                             )}
                          </div>
 
                          <div className="flex-1 flex flex-col space-y-3">
                             {pesanan.detailPesanan.map(item => {
                               const isItemReady = itemReadyState[item.idDetail];
+                              const isOOS = isItemOutOfStock(item);
+
                               return (
                                 <div key={item.idDetail} className="flex space-x-3">
                                    <div className="bg-white flex-1 p-5 rounded-xl text-[#00215e] font-extrabold text-xl shadow-sm flex items-center justify-between">
@@ -379,9 +420,16 @@ export default function KokiPage() {
                                    </div>
                                    <button
                                       onClick={() => toggleItemReady(item.idDetail)}
-                                      className={`p-5 rounded-xl w-24 flex items-center justify-center font-extrabold transition-colors shadow-sm shrink-0 ${isItemReady ? 'bg-[#ffc55a] text-[#00215e]' : 'bg-[#fc4100] text-white hover:opacity-90'}`}
+                                      title={isOOS ? "Out of Stock (Click to force complete)" : "Toggle Ready"}
+                                      className={`p-5 rounded-xl w-24 flex items-center justify-center font-extrabold transition-colors shadow-sm shrink-0 ${
+                                        isItemReady
+                                          ? 'bg-[#ffc55a] text-[#00215e]'
+                                          : isOOS
+                                          ? 'bg-gray-400 text-gray-700 hover:bg-gray-500 hover:text-white'
+                                          : 'bg-[#fc4100] text-white hover:opacity-90'
+                                      }`}
                                    >
-                                      {isItemReady ? <Check className="w-10 h-10" /> : <X className="w-10 h-10" />}
+                                      {isItemReady ? <Check className="w-10 h-10" /> : isOOS ? <Minus className="w-10 h-10" /> : <X className="w-10 h-10" />}
                                    </button>
                                 </div>
                               );
@@ -391,8 +439,8 @@ export default function KokiPage() {
                          <div className="w-64 flex flex-col space-y-3 shrink-0">
                            <button
                               onClick={() => { if(isReady) handleMarkOrderReady(pesanan.noNota) }}
-                              disabled={!isReady || hasMissingIngredient}
-                              className={`flex-1 rounded-xl font-extrabold text-3xl flex items-center justify-center shadow-md transition-all uppercase tracking-widest ${isReady && !hasMissingIngredient ? 'bg-[#588157] text-white hover:opacity-90 cursor-pointer shadow-[0_0_15px_rgba(88,129,87,0.6)]' : 'bg-gray-400 text-gray-200 opacity-90 cursor-not-allowed'}`}
+                              disabled={!isReady}
+                              className={`flex-1 rounded-xl font-extrabold text-3xl flex items-center justify-center shadow-md transition-all uppercase tracking-widest ${isReady ? 'bg-[#588157] text-white hover:opacity-90 cursor-pointer shadow-[0_0_15px_rgba(88,129,87,0.6)]' : 'bg-gray-400 text-gray-200 opacity-90 cursor-not-allowed'}`}
                            >
                               Ready
                            </button>
