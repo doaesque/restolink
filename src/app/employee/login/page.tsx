@@ -31,6 +31,7 @@ export default function EmployeeLoginPage() {
         // save employee data to localstorage so it can be read by dashboard
         localStorage.setItem('idPegawai', result.data.id);
         localStorage.setItem('namaPegawai', result.data.namaPegawai);
+        localStorage.setItem('employeeRole', result.data.jabatan);
 
         const role = result.data.jabatan;
         // auto redirect based on database role
@@ -40,10 +41,10 @@ export default function EmployeeLoginPage() {
         else if (role === 'PEMILIK') router.push('/employee');
         else router.push('/employee');
       } else {
-        setPesanError(result.pesan || 'failed to login to the system.');
+        setPesanError(result.pesan || 'Failed to login to the system.');
       }
     } catch (err) {
-      setPesanError('system connection error occurred.');
+      setPesanError('System connection error occurred.');
     } finally {
       setLoading(false);
     }
