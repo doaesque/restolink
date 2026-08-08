@@ -28,6 +28,10 @@ export default function EmployeeLoginPage() {
       const result = await response.json();
 
       if (result.sukses) {
+        // save employee data to localstorage so it can be read by dashboard
+        localStorage.setItem('idPegawai', result.data.id);
+        localStorage.setItem('namaPegawai', result.data.namaPegawai);
+
         const role = result.data.jabatan;
         // auto redirect based on database role
         if (role === 'PELAYAN') router.push('/employee/pelayan');
