@@ -316,7 +316,7 @@ function CustomerOrderContent() {
     } catch (err) {
       console.error('order submission error:', err);
       alert('System error. Please try again.');
-    } fontally {
+    } finally {
       setIsOrdering(false);
     }
   };
