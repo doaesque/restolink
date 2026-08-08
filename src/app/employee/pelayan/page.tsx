@@ -15,12 +15,10 @@ interface Menu {
   id: string;
   namaMenu: string;
   harga: number;
-}
-
-interface BahanBaku {
-  id: string;
-  namaBahan: string;
-  statusBahan: string;
+  kategori?: string;
+  subKategori?: string | null;
+  image?: string | null;
+  isAvailable?: boolean;
 }
 
 interface CartItem {
@@ -53,7 +51,6 @@ export default function PelayanPage() {
   const [view, setView] = useState<'welcome' | 'dashboard' | 'new_order' | 'active_orders'>('welcome');
   const [listMeja, setListMeja] = useState<Meja[]>([]);
   const [listMenu, setListMenu] = useState<Menu[]>([]);
-  const [listBahan, setListBahan] = useState<BahanBaku[]>([]);
   const [listPesanan, setListPesanan] = useState<Pesanan[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -93,19 +90,27 @@ export default function PelayanPage() {
   }, [router]);
 
   useEffect(() => {
+    let orderInterval: NodeJS.Timeout;
+    let menuInterval: NodeJS.Timeout;
+
     if (view === 'dashboard' || view === 'new_order' || view === 'active_orders') {
       fetchTables(view === 'dashboard');
     }
     if (view === 'new_order') {
       fetchMenu();
-      fetchInventory();
+      // auto poll menu stock status every 5 seconds so it instantly reflects kitchen updates
+      menuInterval = setInterval(() => fetchMenu(), 5000);
     }
     if (view === 'active_orders' || view === 'dashboard') {
       fetchActiveOrders(view === 'active_orders');
       // auto poll order status
-      const interval = setInterval(() => fetchActiveOrders(false), 5000);
-      return () => clearInterval(interval);
+      orderInterval = setInterval(() => fetchActiveOrders(false), 5000);
     }
+
+    return () => {
+      if (orderInterval) clearInterval(orderInterval);
+      if (menuInterval) clearInterval(menuInterval);
+    };
   }, [view]);
 
   async function fetchTables(showLoading = true) {
@@ -123,21 +128,18 @@ export default function PelayanPage() {
 
   async function fetchMenu() {
     try {
-      const res = await fetch('/api/menu');
+      // cache busting to guarantee real-time stock updates from api
+      const res = await fetch('/api/menu', { 
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const data = await res.json();
       if (data.sukses || Array.isArray(data)) setListMenu(Array.isArray(data) ? data : data.data);
     } catch (err) {
       console.error('failed to fetch menu:', err);
-    }
-  }
-
-  async function fetchInventory() {
-    try {
-      const res = await fetch('/api/bahan-baku');
-      const data = await res.json();
-      if (data.sukses || Array.isArray(data)) setListBahan(Array.isArray(data) ? data : data.data);
-    } catch (err) {
-      console.error('failed to fetch inventory:', err);
     }
   }
 
@@ -159,12 +161,6 @@ export default function PelayanPage() {
     }
   }
 
-  // helper to check if menu is available based on raw material keywords
-  const isMenuAvailable = (menuName: string) => {
-    const outOfStock = listBahan.filter(b => b.statusBahan === 'HABIS').map(b => b.namaBahan.toLowerCase());
-    return !outOfStock.some(bahan => menuName.toLowerCase().includes(bahan));
-  };
-
   // helper to show custom modal
   const showModal = (type: ModalState['type'], message: string, onConfirm?: () => void) => {
     setModal({ isOpen: true, type, message, onConfirm });
@@ -174,7 +170,7 @@ export default function PelayanPage() {
 
   // cart operations
   const updateCart = (menu: Menu, delta: number) => {
-    if (!isMenuAvailable(menu.namaMenu)) {
+    if (menu.isAvailable === false) {
       return showModal('alert', 'This item is currently out of stock based on kitchen inventory.');
     }
 
@@ -283,14 +279,14 @@ export default function PelayanPage() {
 
   const activeOrder = selectedTable ? getTableOrder(selectedTable) : null;
 
-  // helper to select table and auto populate customer name if active order exists
+  // helper to select table and auto populate or clear customer name
   const handleSelectTable = (tableNo: number) => {
     setSelectedTable(tableNo);
     const existingOrder = getTableOrder(tableNo);
     if (existingOrder?.pelanggan?.namaPelanggan) {
       setCustomerName(existingOrder.pelanggan.namaPelanggan);
     } else {
-      setCustomerName(''); // reset customer name when switching to an empty table
+      setCustomerName(''); // clear customer name when selecting an empty table
     }
   };
 
@@ -449,7 +445,7 @@ export default function PelayanPage() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto [scrollbar-width:none] flex items-center justify-center bg-[#00215e]/30 rounded-3xl border-2 border-[#ffc55a]/10 backdrop-blur-sm p-8 shadow-inner">
+                <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex items-center justify-center bg-[#00215e]/30 rounded-3xl border-2 border-[#ffc55a]/10 backdrop-blur-sm p-8 shadow-inner">
                   {loading ? (
                      <p className="text-center text-white font-bold text-xl animate-pulse">Scanning Floor Plan...</p>
                   ) : (
@@ -524,7 +520,7 @@ export default function PelayanPage() {
                       </p>
                     </div>
 
-                    <div className="flex-1 p-8 overflow-y-auto [scrollbar-width:thin]">
+                    <div className="flex-1 p-8 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       {!activeOrder ? (
                         <div className="text-center text-sm text-gray-400 font-bold italic mt-10">This table is clean.</div>
                       ) : (
@@ -574,6 +570,8 @@ export default function PelayanPage() {
                           setView('new_order');
                           if (activeOrder?.pelanggan?.namaPelanggan) {
                             setCustomerName(activeOrder.pelanggan.namaPelanggan);
+                          } else {
+                            setCustomerName('');
                           }
                         }}
                         className="w-full py-4 rounded-xl font-extrabold text-[#00215e] text-lg uppercase tracking-widest bg-[#ffc55a] hover:bg-yellow-400 transition-colors shadow-lg flex justify-center items-center"
@@ -591,31 +589,32 @@ export default function PelayanPage() {
          {view === 'new_order' && (
            <div className="flex h-full space-x-6">
 
-             {/* menu catalog (left side) */}
+             {/* menu catalog (left side - single column layout for smooth scrolling) */}
              <div className="flex-1 flex flex-col h-full overflow-hidden bg-white/5 p-6 rounded-2xl border border-white/10 relative z-10">
                <h3 className="text-white text-2xl font-extrabold tracking-wide mb-4 shrink-0">Menu Catalog</h3>
-               <div className="flex-1 overflow-y-auto [scrollbar-width:thin] pr-2">
-                 <div className="grid grid-cols-2 gap-4">
-                   {listMenu.map(menu => {
-                     const isAvail = isMenuAvailable(menu.namaMenu);
+               <div className="flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pr-2">
+                 <div className="grid grid-cols-1 gap-4">
+                   {listMenu.map((menu: Menu) => {
+                     // uses relational stock status directly from API
+                     const isAvail = menu.isAvailable !== false;
                      const countInCart = cart.find(c => c.idMenu === menu.id)?.jumlahPesanan || 0;
                      return (
-                       <div key={menu.id} className={`bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col justify-between ${!isAvail ? 'opacity-60 grayscale' : ''}`}>
-                         <div>
-                           <div className="flex justify-between items-start">
-                             <h4 className="font-extrabold text-[#00215e] text-lg leading-tight mb-1 pr-2">{menu.namaMenu}</h4>
+                       <div key={menu.id} className={`bg-white rounded-xl p-5 shadow-md border border-gray-100 flex items-center justify-between transition-all ${!isAvail ? 'opacity-60 grayscale' : ''}`}>
+                         <div className="flex-1 pr-4">
+                           <div className="flex items-center space-x-2 mb-1">
+                             <h4 className="font-extrabold text-[#00215e] text-xl leading-tight">{menu.namaMenu}</h4>
                              {!isAvail && (
-                               <span className="text-[10px] bg-red-100 text-red-600 font-bold px-2 py-1 rounded uppercase tracking-wider shrink-0">Out of Stock</span>
+                               <span className="text-[10px] bg-red-100 text-red-600 font-bold px-2.5 py-0.5 rounded uppercase tracking-wider shrink-0">Out of Stock</span>
                              )}
                            </div>
-                           <p className="text-[#fc4100] font-bold">Rp. {menu.harga.toLocaleString('id-ID')}</p>
+                           <p className="text-[#fc4100] font-black text-lg">Rp. {menu.harga.toLocaleString('id-ID')}</p>
                          </div>
-                         <div className="mt-4 flex items-center justify-between">
-                           <button onClick={() => updateCart(menu, -1)} disabled={countInCart === 0} className="w-10 h-10 rounded-full bg-gray-100 text-[#00215e] flex items-center justify-center font-bold hover:bg-gray-200 disabled:opacity-30 transition-colors">
+                         <div className="flex items-center space-x-3 shrink-0">
+                           <button onClick={() => updateCart(menu, -1)} disabled={countInCart === 0} className="w-11 h-10 rounded-xl bg-gray-100 text-[#00215e] flex items-center justify-center font-bold hover:bg-gray-200 disabled:opacity-30 transition-colors">
                              <Minus className="w-5 h-5" />
                            </button>
-                           <span className="font-extrabold text-xl text-[#00215e] w-8 text-center">{countInCart}</span>
-                           <button onClick={() => updateCart(menu, 1)} disabled={!isAvail} className="w-10 h-10 rounded-full bg-[#ffc55a] text-[#00215e] flex items-center justify-center font-bold hover:bg-yellow-400 disabled:opacity-30 transition-colors">
+                           <span className="font-extrabold text-2xl text-[#00215e] w-8 text-center">{countInCart}</span>
+                           <button onClick={() => updateCart(menu, 1)} disabled={!isAvail} className="w-11 h-10 rounded-xl bg-[#ffc55a] text-[#00215e] flex items-center justify-center font-bold hover:bg-yellow-400 disabled:opacity-30 transition-colors">
                              <Plus className="w-5 h-5" />
                            </button>
                          </div>
@@ -676,7 +675,7 @@ export default function PelayanPage() {
                  </div>
                </div>
 
-               <div className="flex-1 overflow-y-auto p-5 [scrollbar-width:thin] bg-gray-50/50">
+               <div className="flex-1 overflow-y-auto p-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-gray-50/50">
                  {cart.length === 0 ? (
                    <div className="h-full flex items-center justify-center text-gray-400 font-bold italic text-sm">
                      Cart is empty
@@ -692,7 +691,7 @@ export default function PelayanPage() {
                            </div>
                            <span className="font-bold text-[#00215e]">{(item.subtotal).toLocaleString('id-ID')}</span>
                          </div>
-                         {/* order notes section */}
+                         {/* order notes section with dark readable font */}
                          <div className="relative mt-1">
                            <PenTool className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                            <input
@@ -731,7 +730,7 @@ export default function PelayanPage() {
            <div className="flex-1 flex flex-col overflow-hidden relative z-10">
              <h3 className="text-white text-3xl font-extrabold tracking-wide mb-8 shrink-0">Active Table Orders</h3>
 
-             <div className="space-y-4 overflow-y-auto pr-2 pb-4 [scrollbar-width:thin]">
+             <div className="space-y-4 overflow-y-auto pr-2 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                {loading ? (
                  <p className="text-center text-white font-bold mt-10 text-xl">Loading active orders...</p>
                ) : listPesanan.length === 0 ? (
