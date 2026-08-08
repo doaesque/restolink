@@ -16,11 +16,11 @@ async function main() {
 
   console.log('inserting customer data...');
   // creating a generic guest customer for walk-in orders
-  await prisma.pelanggan.create({
-    data: {
-      id: 'Guest',
-      namaPelanggan: 'Walk-in Guest'
-    }
+  await prisma.pelanggan.createMany({
+    data: [
+      { id: 'Guest', namaPelanggan: 'Walk-in Guest' },
+      { id: 'CUST-001', namaPelanggan: 'Budi Santoso' } // added new customer for testing
+    ]
   });
 
   console.log('inserting employee data (team bandros)...');
@@ -133,7 +133,7 @@ async function main() {
       data: {
         jumlahOrang: 4,
         noMeja: 8,
-        idPelanggan: 'Guest',
+        idPelanggan: 'CUST-001', // using the new customer here
         statusPesanan: 'MENUNGGU',
         statusTagihan: 'UNPAID',
         detailPesanan: {
@@ -157,4 +157,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-  
