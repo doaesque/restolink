@@ -60,7 +60,7 @@ v
 
 ```bash
 # Clone and install
-git clone [https://github.com/doaesque/restolink.git](https://github.com/doaesque/restolink.git)
+git clone https://github.com/doaesque/restolink.git
 cd restolink
 npm install
 
